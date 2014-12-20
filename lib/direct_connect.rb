@@ -1,0 +1,25 @@
+require 'openssl'
+require 'action_controller'
+require 'active_record'
+require 'action_view'
+require 'active_merchant'
+require 'active_support'
+require 'bigdecimal'
+require 'money'
+require 'monetize'
+require 'offsite_payments'
+require 'pathname'
+require 'sinatra'
+require 'singleton'
+require 'yaml'
+
+require 'killbill'
+require 'killbill/helpers/active_merchant'
+
+require 'direct_connect/api'
+require 'direct_connect/private_api'
+
+require 'direct_connect/models/payment_method'
+require 'direct_connect/models/response'
+require 'direct_connect/models/transaction'
+
