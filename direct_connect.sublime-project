@@ -1,0 +1,14 @@
+{
+  "folders":
+  [
+    {
+      "follow_symlinks": true,
+      "path": "."
+    }
+  ],
+  "settings": {
+    "tab_size": 2,
+    "expand_tabs": true,
+    "translate_tabs_to_spaces": true
+  }
+}
