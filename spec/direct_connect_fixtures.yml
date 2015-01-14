@@ -1,0 +1,5 @@
+# copy to ~/.killbill/direct_connect_fixtures.yml
+
+direct_connect:
+  username: USERNAME
+  password: PASSWORD

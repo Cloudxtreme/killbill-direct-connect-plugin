@@ -134,8 +134,8 @@ module DirectConnect
 
   module Fixtures
     HOME_DIR = RUBY_PLATFORM =~ /mswin32/ ? ENV['HOMEPATH'] : ENV['HOME'] unless defined?(HOME_DIR)
-    LOCAL_CREDENTIALS = File.join(HOME_DIR.to_s, '.active_merchant/fixtures.yml') unless defined?(LOCAL_CREDENTIALS)
-    DEFAULT_CREDENTIALS = File.join(File.dirname(__FILE__), 'fixtures.yml') unless defined?(DEFAULT_CREDENTIALS)
+    LOCAL_CREDENTIALS = File.join(HOME_DIR.to_s, '.killbill/direct_connect_fixtures.yml') unless defined?(LOCAL_CREDENTIALS)
+    DEFAULT_CREDENTIALS = File.join(File.dirname(__FILE__), 'direct_connect_fixtures.yml') unless defined?(DEFAULT_CREDENTIALS)
 
     private
     def credit_card(number = '4242424242424242', options = {})
