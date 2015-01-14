@@ -5,10 +5,11 @@ Kill Bill payment plugin to use the Direct Connect Gateway
 # install
 
 ```sh
-gem install bundler jbundler
-rbenv rehash
-bundle install
-bundle exec jbundle install
+rbenv install jruby-1.7.17 # make sure the right version is installed
+gem install bundler jbundler # install prereq executables
+rbenv rehash # make sure executables are available
+bundle install # install gems
+bundle exec jbundle install # install jars
 ```
 
 # tests
