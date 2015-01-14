@@ -5,7 +5,8 @@ Kill Bill payment plugin to use the Direct Connect Gateway
 # install
 
 ```sh
-gem install jbundler
+gem install bundler jbundler
+rbenv rehash
 bundle install
 bundle exec jbundle install
 ```

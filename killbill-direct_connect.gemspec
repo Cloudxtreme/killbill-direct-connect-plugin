@@ -24,7 +24,7 @@ Gem::Specification.new do |s|
 
   s.add_dependency 'killbill', '~> 3.2.0'
   s.add_dependency 'activemerchant'
-  s.add_dependency 'active_utils'
+  s.add_dependency('active_utils', '~> 2.2.0')
   s.add_dependency 'offsite_payments', '~> 2.0.1'
   s.add_dependency 'activerecord', '~> 4.1.0'
   s.add_dependency 'actionpack', '~> 4.1.0'
@@ -42,6 +42,8 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'jbundler', '~> 0.4.1'
   s.add_development_dependency 'rake', '>= 10.0.0'
   s.add_development_dependency 'rspec', '~> 2.12.0'
+  s.add_development_dependency('mocha', '~> 0.13.0')
+  
   if defined?(JRUBY_VERSION)
     s.add_development_dependency 'activerecord-jdbcsqlite3-adapter', '~> 1.3.7'
   else

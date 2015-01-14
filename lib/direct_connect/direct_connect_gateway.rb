@@ -1,9 +1,10 @@
 require 'nokogiri'
+require 'active_utils/common/posts_data'
 
 module KillBill #:nodoc:
   module DirectConnect #:nodoc:
-    class Gateway
-      include PostsData
+    class Gateway < ActiveMerchant::Billing::Gateway
+      include ActiveMerchant::PostsData
 
       self.test_url = 'https://gateway.1directconnect.com/'
       self.live_url = 'https://gateway.1directconnect.com/'

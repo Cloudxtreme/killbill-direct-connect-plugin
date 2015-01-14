@@ -1,6 +1,6 @@
 require 'test_helper'
 
-class RemoteDirectConnectTest < Test::Unit::TestCase
+class RemoteDirectConnectTest < Test::Unit::Test
   def setup
     @gateway = DirectConnectGateway.new(fixtures(:direct_connect))
 

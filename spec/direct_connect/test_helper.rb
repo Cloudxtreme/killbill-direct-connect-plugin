@@ -1,22 +1,19 @@
 #!/usr/bin/env ruby
 $:.unshift File.expand_path('../../lib', __FILE__)
+$:.unshift File.dirname(__FILE__)
+
+require 'direct_connect'
 
 begin
-  require 'rubygems'
-  require 'bundler'
-  Bundler.setup
+  #require 'rubygems'
+  #require 'bundler'
+  #Bundler.setup
 rescue LoadError => e
   puts "Error loading bundler (#{e.message}): \"gem install bundler\" for bundler support."
 end
 
-require 'test/unit'
-
-require 'mocha/version'
-if(Mocha::VERSION.split(".")[1].to_i < 12)
-  require 'mocha'
-else
-  require 'mocha/setup'
-end
+require 'minitest'
+require 'mocha/setup'
 require 'yaml'
 require 'json'
 require 'active_merchant'
@@ -33,6 +30,11 @@ end
 module DirectConnect
   module Assertions
     AssertionClass = RUBY_VERSION > '1.9' ? MiniTest::Assertion : Test::Unit::AssertionFailedError
+
+    def build_message(head, template=nil, *arguments) #:nodoc:
+      template &&= template.chomp
+      template.gsub(/\G((?:[^\\]|\\.)*?)(\\)?\?/) { $1 + ($2 ? "?" : mu_pp(arguments.shift)) }
+    end
 
     def assert_field(field, value)
       clean_backtrace do
@@ -147,7 +149,7 @@ module DirectConnect
         :brand => 'visa'
       }.update(options)
 
-      Billing::CreditCard.new(defaults)
+      ActiveMerchant::Billing::CreditCard.new(defaults)
     end
 
     def credit_card_with_track_data(number = '4242424242424242', options = {})
@@ -206,8 +208,8 @@ module DirectConnect
   end
 end
 
-Test::Unit::TestCase.class_eval do
-  include DirectConnect::Billing
+MiniTest::Test.class_eval do
+  #include KillBill::DirectConnect
   include DirectConnect::Assertions
   include DirectConnect::Fixtures
 end

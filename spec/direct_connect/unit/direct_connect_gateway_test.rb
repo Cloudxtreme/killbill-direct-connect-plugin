@@ -1,10 +1,14 @@
-require 'test_helper'
+$:.unshift File.dirname(__FILE__)
+$:.unshift File.expand_path('../', __FILE__)
+require '../test_helper'
+require 'minitest/autorun'
+require 'direct_connect'
 
-class DirectConnectTest < Test::Unit::TestCase
+class DirectConnectTest < MiniTest::Test
   def setup
     @authorization = 12345
 
-    @gateway = DirectConnectGateway.new(
+    @gateway = KillBill::DirectConnect::Gateway.new(
       username: 'login',
       password: 'password'
     )
@@ -30,7 +34,6 @@ class DirectConnectTest < Test::Unit::TestCase
     
     assert_success response
     assert_equal 12345, response.authorization
-    assert response.test?
   end
 
   def test_failed_purchase
@@ -39,7 +42,7 @@ class DirectConnectTest < Test::Unit::TestCase
 
     response = @gateway.purchase(@amount, @credit_card, @options)
     assert_failure response
-    assert_equal :invalidAccountNumber, DirectConnectGateway::DIRECT_CONNECT_CODES[response.params['result']]
+    assert_equal :invalidAccountNumber, KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
   end
 
   def test_successful_authorize
@@ -58,7 +61,7 @@ class DirectConnectTest < Test::Unit::TestCase
     response = @gateway.authorize(@amount, @credit_card, @options)
     assert_failure response
 
-    assert_equal :invalidAccountNumber, DirectConnectGateway::DIRECT_CONNECT_CODES[response.params['result']]
+    assert_equal :invalidAccountNumber, KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
   end
 
   def test_successful_capture
@@ -76,7 +79,7 @@ class DirectConnectTest < Test::Unit::TestCase
     response = @gateway.capture(@amount, @authorization, @options)
 
     assert_failure response
-    assert_equal :noRecordsToProcess, DirectConnectGateway::DIRECT_CONNECT_CODES[response.params['result']]
+    assert_equal :noRecordsToProcess, KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
     assert_equal 'No Records To Process', response.message
   end
 
@@ -114,7 +117,7 @@ class DirectConnectTest < Test::Unit::TestCase
     response = @gateway.void(@authorization, @options)
     assert_failure response
 
-    assert_equal :invalidPnRef, DirectConnectGateway::DIRECT_CONNECT_CODES[response.params['result']]
+    assert_equal :invalidPnRef, KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
   end
 
   def test_successful_verify
