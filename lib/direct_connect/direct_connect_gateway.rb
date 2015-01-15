@@ -116,6 +116,21 @@ module KillBill #:nodoc:
         end
       end
 
+      # Recurring
+
+      ##
+      # Adds a recurring payment contract to the specified customer
+      #
+      # notes from https://www.evernote.com/shard/s341/sh/3f2ae114-ce86-4cd5-833e-741b8e475317/079e709598f43cf1
+      def add_contract(payment, options)
+      end
+
+      def update_contract(options)
+      end
+
+      def delete_contract(options)
+      end
+
       def supports_scrubbing?
         true
       end

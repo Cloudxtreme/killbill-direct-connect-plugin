@@ -6,6 +6,7 @@ require 'direct_connect'
 
 class RemoteDirectConnectTest < MiniTest::Test
   def setup
+    @customer_id = 'b2a4dadc-8def-4623-96a2-da0c80b63ad4'
     @gateway = KillBill::DirectConnect::Gateway.new(fixtures(:direct_connect))
 
     @amount = 100
