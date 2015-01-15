@@ -123,12 +123,18 @@ module KillBill #:nodoc:
       #
       # notes from https://www.evernote.com/shard/s341/sh/3f2ae114-ce86-4cd5-833e-741b8e475317/079e709598f43cf1
       def add_contract(payment, options)
+        post = {}
+        commit(:add_contract, post)
       end
 
       def update_contract(options)
+        post = {}
+        commit(:update_contract, post)
       end
 
       def delete_contract(options)
+        post = {}
+        commit(:delete_contract, post)
       end
 
       def supports_scrubbing?
@@ -256,6 +262,8 @@ module KillBill #:nodoc:
           :processCreditCard
         when :saleCheck, :authCheck, :returnCheck, :voidCheck
           :processCheck
+        when :add_contract, :update_contract, :delete_contract
+          :manage_contract
         else
           action
         end
@@ -271,6 +279,8 @@ module KillBill #:nodoc:
           "ws/cardsafe.asmx/StoreCard"
         when :processCardRecurring
           "ws/recurring.asmx/ProcessCreditCard"
+        when :manage_contract
+          "ws/recurring.asmx/ManageContract"
         end
       end
 
