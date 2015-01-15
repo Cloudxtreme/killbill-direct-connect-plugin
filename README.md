@@ -35,3 +35,4 @@ rake test:remote[test_failed_purchase] # run gateway remote test 'test_failed_pu
 # Docs
 
 - [Direct Connect API Docs](https://gateway.1directconnect.com/paygate/nethelp/)
+- [Direct Connect Test Forms](https://gateway.1directconnect.com/ws/TestForms/TestFormsTOC.aspx)
