@@ -137,6 +137,9 @@ module KillBill #:nodoc:
         commit(:delete_contract, post)
       end
 
+      def add_contract_data(post, contract_data)
+      end
+
       def supports_scrubbing?
         true
       end
