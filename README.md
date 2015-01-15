@@ -26,10 +26,10 @@ Do not edit `spec/direct_connect_fixtures.yml`. Instead, edit the copied one at 
 # tests
 
 ```sh
-ruby -I"lib:test" spec/direct_connect/unit/direct_connect_gateway_test.rb # run unit tests
-ruby -I"lib:test" spec/direct_connect/unit/direct_connect_gateway_test.rb -n "test_method_name" # run unit test "test_method_name"
-ruby -I"lib:test" spec/direct_connect/remote/remote_direct_connect_gateway_test.rb # run remote tests
-ruby -I"lib:test" spec/direct_connect/remote/remote_direct_connect_gateway_test.rb -n "test_method_name" # run remote test "test_method_name"
+rake test:unit # run all gateway unit tests
+rake test:unit[test_failed_purchase] # run gateway unit test 'test_failed_purchase'
+rake test:remote # run all gateway remote tests
+rake test:remote[test_failed_purchase] # run gateway remote test 'test_failed_purchase'
 ```
 
 # Docs

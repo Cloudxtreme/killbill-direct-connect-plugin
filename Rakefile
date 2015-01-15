@@ -13,7 +13,23 @@ namespace :test do
     task.pattern = './spec/*/*_spec.rb'
   end
 
-  namespace :remote do
+  desc 'Run Gateway unit tests'
+  task :unit, [:test_name] do |task, args|
+    test_name = args[:test_name]
+    test_name_arg = "-n \"#{test_name}\"" unless test_name.nil?
+    sh_command = "ruby -I\"lib:test\" spec/direct_connect/unit/direct_connect_gateway_test.rb #{test_name_arg}"
+    sh sh_command
+  end
+
+  desc 'Run Gateway remote tests'
+  task :remote, [:test_name] do |task, args|
+    test_name = args[:test_name]
+    test_name_arg = "-n \"#{test_name}\"" unless test_name.nil?
+    sh_command = "ruby -I\"lib:test\" spec/direct_connect/remote/remote_direct_connect_gateway_test.rb #{test_name_arg}"
+    sh sh_command
+  end
+
+  namespace :remote_unused do
     desc 'Run RSpec remote tests'
     RSpec::Core::RakeTask.new do |task|
       task.name = 'spec'
