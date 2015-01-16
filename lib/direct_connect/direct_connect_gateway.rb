@@ -20,7 +20,9 @@ module KillBill #:nodoc:
         0 => :success,
         23 => :invalidAccountNumber,
         26 => :invalidPnRef,
-        1015 => :noRecordsToProcess
+        1015 => :noRecordsToProcess,
+        'Invalid_Argument' => :invalid_argument,
+        'OK' => :success
       }
 
       def initialize(options={})
@@ -122,8 +124,14 @@ module KillBill #:nodoc:
       # Adds a recurring payment contract to the specified customer
       #
       # notes from https://www.evernote.com/shard/s341/sh/3f2ae114-ce86-4cd5-833e-741b8e475317/079e709598f43cf1
-      def add_contract(payment, options)
+      def add_contract(payment_token, options)
         post = {}
+        add_contract_data(post, options[:contract])
+        add_payment_token(post, payment_token)
+        add_authentication(post, options)
+        add_customer_data(post, options[:customer])
+
+        post[:transtype] = 'Add'
         commit(:add_contract, post)
       end
 
@@ -138,6 +146,31 @@ module KillBill #:nodoc:
       end
 
       def add_contract_data(post, contract_data)
+        post[:contractkey] = contract_data[:contract_key]
+        post[:contractid] = contract_data[:contract_id]
+        post[:contractname] = contract_data[:name]
+
+        amt = contract_data[:amount]
+        post[:billamt] = amount(amt[:bill])
+        post[:taxamt] = amount(amt[:tax])
+        post[:totalamt] = amount(amt[:total])
+
+        post[:startdate] = contract_data[:start_date]
+        post[:enddate] = contract_data[:end_date]
+        post[:nextbilldt] = contract_data[:next_bill_date]
+
+        post[:billingperiod] = contract_data[:period].to_s
+        post[:billinginterval] = contract_data[:interval]
+
+        post[:maxfailures] = nil
+        post[:failureinterval] = nil
+        post[:emailcustomer] = nil
+        post[:emailmerchant] = nil
+        post[:emailcustomerfailure] = nil
+        post[:emailmerchantfailure] = nil
+
+        post[:status] = 'ACTIVE'
+        post[:extdata] = nil
       end
 
       def supports_scrubbing?
@@ -157,10 +190,30 @@ module KillBill #:nodoc:
       def add_authentication(post, options)
         post[:username] = @username
         post[:password] = @password
+        post[:vendor] = options[:vendor] unless options[:vendor].nil?
       end
 
-      def add_customer_data(post, options)
-
+      def add_customer_data(post, customer)
+        post[:customerkey] = customer[:key]
+        post[:customerid] = customer[:id]
+        post[:customername] = customer[:name]
+        post[:firstname] = nil
+        post[:lastname] = nil
+        post[:title] = nil
+        post[:department] = nil
+        post[:street1] = nil
+        post[:street2] = nil
+        post[:street3] = nil
+        post[:city] = nil
+        post[:stateid] = nil
+        post[:province] = nil
+        post[:zip] = nil
+        post[:countryid] = nil
+        post[:dayphone] = nil
+        post[:nightphone] = nil
+        post[:fax] = nil
+        post[:email] = nil
+        post[:mobile] = nil
       end
 
       def add_required_nil_values(post)
@@ -198,20 +251,41 @@ module KillBill #:nodoc:
         post[:cvnum] = payment.verification_value
       end
 
+      def add_payment_token(post, payment_token)
+        post[:paymenttype] = 'CC'
+        post[:paymentinfokey] = payment_token.token
+      end
+
       def parse(action, body)
         doc = Nokogiri::XML(body)
+        manage_contract = actionToService(action) == :manage_contract
         doc.remove_namespaces!
         response = {action: action}
+        root_path = "//Response"
+        result_path = "//Response/Result"
+
+        if manage_contract then
+          result_path = "//RecurringResult"
+          root_path = result_path
+        end
 
         # special parsing
-        response[:result] = doc.at_xpath("//Response/Result").content.to_i
+        if manage_contract then
+          if code = doc.at_xpath('//RecurringResult/Code') then
+            response[:result] = code.content
+          else
+            response[:result] = 0
+          end
+        else
+          result = doc.at_xpath(result_path).content.to_i
+        end
 
         if el = doc.at_xpath("//Response/PNRef")
           response[:pnref] = el.content.to_i
         end
 
         # parse everything else
-        doc.at_xpath('//Response').element_children.each do |node|
+        doc.at_xpath(root_path).element_children.each do |node|
           node_sym = node.name.downcase.to_sym
           response[node_sym] ||= normalize(node.content)
         end
@@ -226,7 +300,7 @@ module KillBill #:nodoc:
         begin
           data = post_data(action, parameters)
           response = parse(action, ssl_post(url, data))
-        rescue ResponseError => e
+        rescue ActiveMerchant::ResponseError => e
           puts e.response.body
         end
 
@@ -240,7 +314,12 @@ module KillBill #:nodoc:
       end
 
       def success_from(response)
-        DIRECT_CONNECT_CODES[response[:result]] == :success
+        case response[:action]
+        when :add_contract, :update_contract, :delete_contract
+          DIRECT_CONNECT_CODES[response[:code]] == :success
+        else
+          DIRECT_CONNECT_CODES[response[:result]] == :success
+        end
       end
 
       def message_from(response)
@@ -281,9 +360,9 @@ module KillBill #:nodoc:
         when :storeCardSafeCard
           "ws/cardsafe.asmx/StoreCard"
         when :processCardRecurring
-          "ws/recurring.asmx/ProcessCreditCard"
+          "paygate/ws/recurring.asmx/ProcessCreditCard"
         when :manage_contract
-          "ws/recurring.asmx/ManageContract"
+          "paygate/ws/recurring.asmx/ManageContract"
         end
       end
 

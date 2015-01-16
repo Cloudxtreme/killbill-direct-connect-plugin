@@ -48,6 +48,7 @@ require 'killbill'
 require 'killbill/helpers/active_merchant'
 
 require 'direct_connect/api'
+require 'direct_connect/direct_connect_token'
 require 'direct_connect/direct_connect_gateway'
 require 'direct_connect/private_api'
 

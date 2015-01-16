@@ -3,3 +3,4 @@
 direct_connect:
   username: USERNAME
   password: PASSWORD
+  vendorid: 1234

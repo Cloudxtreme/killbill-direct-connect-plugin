@@ -7,11 +7,14 @@ require 'direct_connect'
 class RemoteDirectConnectTest < MiniTest::Test
   def setup
     @customer_id = 'b2a4dadc-8def-4623-96a2-da0c80b63ad4'
-    @gateway = KillBill::DirectConnect::Gateway.new(fixtures(:direct_connect))
+    @customer_key = '661887'
+    @creds = fixtures(:direct_connect)
+    @gateway = KillBill::DirectConnect::Gateway.new(@creds)
 
     @amount = 100
     @credit_card = credit_card('4111111111111111')
     @declined_card = credit_card('4111111111111112')
+    @token = KillBill::DirectConnect::DirectConnectToken.new(11153405, :stored_card)
 
     @options = {
       order_id: '1',
@@ -137,9 +140,56 @@ class RemoteDirectConnectTest < MiniTest::Test
   # recurring
 
   def test_successful_add_contract
+    contract = {
+      :period => :day,
+      :interval => 1,
+      :start_date => '01/16/2015',
+      :end_date => '01/30/2015',
+      :next_bill_date => '01/17/2015',
+      :amount => {
+        :bill => 100,
+        :tax => 0,
+        :total => 100
+      },
+      :contract_id => 12345654321,
+      :name => 'test contract'
+    }
+    customer = {
+      :key => @customer_key,
+      :name => 'Person Man'
+    }
+
+    @options[:customer] = customer
+    @options[:contract] = contract
+    @options[:vendor] = @creds[:vendorid]
+    response = @gateway.add_contract(@token, @options)
+    contract_key = response.params['contractkey'].to_i # this is the contract key
+    assert_success response
   end
 
   def test_failed_add_contract
+    contract = {
+      :period => :day,
+      :interval => 1,
+      :start_date => '01/16/2015',
+      :end_date => '01/30/2015',
+      :next_bill_date => '01/17/2015',
+      :amount => {
+        :bill => 100,
+        :tax => 0,
+        :total => 100
+      },
+      :name => 'test contract'
+    }
+    customer = {
+      :name => 'Person Man'
+    }
+
+    @options[:customer] = customer
+    @options[:contract] = contract
+    @options[:vendor] = @creds[:vendorid]
+    response = @gateway.add_contract(@token, @options)
+    assert_failure response
   end
 
   def test_successful_update_contract
