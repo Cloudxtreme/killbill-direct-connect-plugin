@@ -129,26 +129,6 @@ class DirectConnectTest < MiniTest::Test
   def test_failed_verify
   end
 
-  # recurring
-
-  def test_successful_add_contract
-  end
-
-  def test_failed_add_contract
-  end
-
-  def test_successful_update_contract
-  end
-
-  def test_failed_update_contract
-  end
-
-  def test_successful_delete_contract
-  end
-
-  def test_failed_delete_contract
-  end
-
   # crm
 
   def test_successful_add_customer

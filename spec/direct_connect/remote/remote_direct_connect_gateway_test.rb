@@ -44,7 +44,6 @@ class RemoteDirectConnectTest < MiniTest::Test
 
   def test_successful_purchase
     response = @gateway.purchase(@amount, @credit_card, @options)
-
     assert_success response
     assert_equal 'Approved', response.message
     assert response.authorization
@@ -52,7 +51,7 @@ class RemoteDirectConnectTest < MiniTest::Test
 
   def test_failed_purchase
     response = @gateway.purchase(@amount, @declined_card, @options)
-    
+
     assert_failure response
     assert_equal :invalidAccountNumber, KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
     assert_equal 'Invalid Account Number', response.message
@@ -131,26 +130,6 @@ class RemoteDirectConnectTest < MiniTest::Test
     )
     response = gateway.purchase(@amount, @credit_card, @options)
     assert_failure response
-  end
-
-  # recurring
-
-  def test_successful_add_contract
-  end
-
-  def test_failed_add_contract
-  end
-
-  def test_successful_update_contract
-  end
-
-  def test_failed_update_contract
-  end
-
-  def test_successful_delete_contract
-  end
-
-  def test_failed_delete_contract
   end
 
   # crm
