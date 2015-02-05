@@ -11,7 +11,10 @@ Avoid this by using the [vagrant box](https://github.com/NGPVAN/killbill-you-vag
 
 # install
 
+Run these from inside this repo's directory. In our standard vagrant box, this is at `/vagrant/plugins/killbill-direct-connect-plugin` 
+
 ```sh
+rbenv local jruby-1.7.17
 mkdir -p ~/.killbill
 cp spec/direct_connect_fixtures.yml ~/.killbill/direct_connect_fixtures.yml # edit the ~ one to have your credentials
 rbenv install jruby-1.7.17 # make sure the right version is installed
