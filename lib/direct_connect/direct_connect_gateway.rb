@@ -139,6 +139,28 @@ module KillBill #:nodoc:
         commit(:addCustomer, post)
       end
 
+      def update_customer(options, customerkey)
+        post = {}
+
+        add_authentication(post, options)
+        add_customer_data(post, options)
+
+        post[:customerkey] =  customerkey
+        post[:transtype] = 'update'
+        commit(:updateCustomer, post)
+      end
+
+      def delete_customer(options, customerkey)
+        post = {}
+
+        add_authentication(post, options)
+        add_customer_data(post, options)
+
+        post[:customerkey] =  customerkey
+        post[:transtype] = 'delete'
+        commit(:deleteCustomer, post)
+      end
+
       def add_card_to_customer
       end
 

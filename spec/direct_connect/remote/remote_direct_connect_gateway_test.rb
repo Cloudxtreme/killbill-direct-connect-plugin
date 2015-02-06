@@ -143,12 +143,18 @@ class RemoteDirectConnectTest < MiniTest::Test
   end
 
   def test_successful_update_customer
+    customer = @gateway.add_customer(@options)
+    response = @gateway.update_customer(@options, customer.params["customerkey"])
+    assert_success response
   end
 
   def test_failed_update_customer
   end
 
   def test_successful_delete_customer
+    customer = @gateway.add_customer(@options)
+    response = @gateway.delete_customer(@options, customer.params["customerkey"])
+    assert_success response
   end
 
   def test_failed_delete_customer
