@@ -24,9 +24,10 @@ module KillBill #:nodoc:
       }
 
       def initialize(options={})
-        requires!(options, :username, :password)
+        requires!(options, :username, :password, :vendorid)
         @username = options[:username]
         @password = options[:password]
+        @vendor = options[:vendorid]
         super
       end
 
@@ -128,15 +129,62 @@ module KillBill #:nodoc:
           .gsub(%r((cvnum=)\d+), '\1[FILTERED]')
       end
 
+      def add_customer(options={})
+        post = {}
+
+        add_authentication(post, options)
+        add_customer_data(post, options)
+
+        post[:transtype] = 'add'
+        commit(:addCustomer, post)
+      end
+
+      def add_card_to_customer
+      end
+
       private
 
       def add_authentication(post, options)
         post[:username] = @username
         post[:password] = @password
+        post[:vendor] = @vendor
       end
 
       def add_customer_data(post, options)
+        post[:customerkey] = nil
+        post[:customerid] = nil
+        post[:customername] = options[:customername]
+        post[:firstname] = options[:firstname]
+        post[:lastname] = options[:lastname]
+        post[:title] = options[:title]
+        post[:department] = options[:department]
+        post[:street1] = options[:street1]
+        post[:street2] = options[:street2]
+        post[:street3] = options[:street3]
+        post[:city] = options[:city]
+        post[:stateid] = options[:stateid]
+        post[:province] = options[:province]
+        post[:zip] = options[:zip]
+        post[:countryid] = options[:countryid]
+        post[:email] = options[:email]
+        post[:dayphone] = options[:dayphone]
+        post[:nightphone] = options[:nightphone]
+        post[:fax] = options[:fax]
+        post[:mobile] = options[:mobile]
+        post[:status] = 'ACTIVE'
+        post[:extdata] = nil
+      end
 
+      def add_credit_card_info(post, options)
+        add_authentication(post, options)
+        post[:tokenmode] = options[:tokenmode]
+        post[:cardnum] = options[:cardnum]
+        post[:expdate] = options[:expdate]
+        post[:customerkey] = options[:customerkey]
+        post[:nameoncard] = options[:nameoncard]
+        post[:street] = options[:street]
+        post[:zip] = options[:zip]
+        post[:extdata] = nil
       end
 
       def add_required_nil_values(post)
@@ -179,19 +227,27 @@ module KillBill #:nodoc:
         doc.remove_namespaces!
         response = {action: action}
 
-        # special parsing
-        response[:result] = doc.at_xpath("//Response/Result").content.to_i
+        service = actionToService(action)
 
-        if el = doc.at_xpath("//Response/PNRef")
-          response[:pnref] = el.content.to_i
+        case service
+          when :manageCustomer
+            errorCode = doc.at_xpath("//RecurringResult/error").content.to_s
+            response[:result] = errorCode == 'OK' ? 0 : nil
+            response[:customerkey] = doc.at_xpath("//RecurringResult/CustomerKey").content.to_i
+          else
+            # special parsing
+            response[:result] = doc.at_xpath("//Response/Result").content.to_i
+
+            if el = doc.at_xpath("//Response/PNRef")
+              response[:pnref] = el.content.to_i
+            end
+
+            # parse everything else
+            doc.at_xpath('//Response').element_children.each do |node|
+              node_sym = node.name.downcase.to_sym
+              response[node_sym] ||= normalize(node.content)
+            end
         end
-
-        # parse everything else
-        doc.at_xpath('//Response').element_children.each do |node|
-          node_sym = node.name.downcase.to_sym
-          response[node_sym] ||= normalize(node.content)
-        end
-
         response
       end
 
@@ -202,7 +258,7 @@ module KillBill #:nodoc:
         begin
           data = post_data(action, parameters)
           response = parse(action, ssl_post(url, data))
-        rescue ResponseError => e
+        rescue ActiveMerchant::ResponseError => e
           puts e.response.body
         end
 
@@ -241,6 +297,8 @@ module KillBill #:nodoc:
           :processCreditCard
         when :saleCheck, :authCheck, :returnCheck, :voidCheck
           :processCheck
+        when :addCustomer, :updateCustomer, :deleteCustomer
+          :manageCustomer
         else
           action
         end
@@ -256,6 +314,8 @@ module KillBill #:nodoc:
           "ws/cardsafe.asmx/StoreCard"
         when :processCardRecurring
           "ws/recurring.asmx/ProcessCreditCard"
+        when :manageCustomer
+          "/paygate/ws/recurring.asmx/ManageCustomer"
         end
       end
 

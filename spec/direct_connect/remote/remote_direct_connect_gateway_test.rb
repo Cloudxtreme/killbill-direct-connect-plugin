@@ -135,6 +135,8 @@ class RemoteDirectConnectTest < MiniTest::Test
   # crm
 
   def test_successful_add_customer
+    response = @gateway.add_customer(@options)
+    assert_success response
   end
 
   def test_failed_add_customer
