@@ -71,7 +71,7 @@ module KillBill #:nodoc:
         add_authentication(post, options)
 
         post[:transtype] = 'Capture'
-        post[:pnref] =  authorization
+        post[:pnref] = authorization
 
         commit(:saleCreditCard, post)
       end
@@ -84,7 +84,7 @@ module KillBill #:nodoc:
         add_authentication(post, options)
         
         post[:transtype] = 'Return'
-        post[:pnref] =  authorization
+        post[:pnref] = authorization
 
         commit(:returnCreditCard, post)
       end
@@ -104,7 +104,7 @@ module KillBill #:nodoc:
         post[:nameOnCard] = nil
         post[:transType] = 'void'
         post[:extData] = nil
-        post[:pnRef] =  authorization
+        post[:pnRef] = authorization
         post[:magData] = options[:magData]
 
         commit(:voidCreditCard, post)
@@ -139,29 +139,42 @@ module KillBill #:nodoc:
         commit(:addCustomer, post)
       end
 
-      def update_customer(options, customerkey)
+      def update_customer(options)
         post = {}
 
         add_authentication(post, options)
         add_customer_data(post, options)
 
-        post[:customerkey] =  customerkey
+        post[:customerkey] = options[:customerkey]
         post[:transtype] = 'update'
         commit(:updateCustomer, post)
       end
 
-      def delete_customer(options, customerkey)
+      def delete_customer(options)
         post = {}
 
         add_authentication(post, options)
         add_customer_data(post, options)
 
-        post[:customerkey] =  customerkey
+        post[:customerkey] = options[:customerkey]
         post[:transtype] = 'delete'
         commit(:deleteCustomer, post)
       end
 
-      def add_card_to_customer
+      def add_card(options)
+        post = {}
+
+        add_credit_card_info(post, options)
+
+        commit(:addCard, post)
+      end
+
+      def update_card(options)
+        post = {}
+
+        add_credit_card_info(post, options)
+
+        commit(:updateCard, post)
       end
 
       private
@@ -193,7 +206,7 @@ module KillBill #:nodoc:
         post[:nightphone] = options[:nightphone]
         post[:fax] = options[:fax]
         post[:mobile] = options[:mobile]
-        post[:status] = 'ACTIVE'
+        post[:status] = options[:status]
         post[:extdata] = nil
       end
 
@@ -220,7 +233,7 @@ module KillBill #:nodoc:
           post[:zip] = nil
           post[:extdata] = nil
           post[:magdata] = nil
-          post[:pnref] =  nil
+          post[:pnref] = nil
       end
 
       def add_address(post, creditcard, options)
@@ -253,9 +266,11 @@ module KillBill #:nodoc:
 
         case service
           when :manageCustomer
-            errorCode = doc.at_xpath("//RecurringResult/error").content.to_s
-            response[:result] = errorCode == 'OK' ? 0 : nil
-            response[:customerkey] = doc.at_xpath("//RecurringResult/CustomerKey").content.to_i
+            if recurringResult = doc.at_xpath("//RecurringResult")
+              errorCode = doc.at_xpath("//RecurringResult/error").content.to_s
+              response[:result] = errorCode == 'OK' ? 0 : nil
+              response[:customerkey] = doc.at_xpath("//RecurringResult/CustomerKey").content.to_i
+            end
           else
             # special parsing
             response[:result] = doc.at_xpath("//Response/Result").content.to_i
@@ -321,6 +336,8 @@ module KillBill #:nodoc:
           :processCheck
         when :addCustomer, :updateCustomer, :deleteCustomer
           :manageCustomer
+        when :addCard, :updateCard, :deleteCard
+          :storeCardSafeCard
         else
           action
         end

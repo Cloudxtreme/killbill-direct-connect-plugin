@@ -139,12 +139,17 @@ class RemoteDirectConnectTest < MiniTest::Test
     assert_success response
   end
 
+  # this does not work yet
   def test_failed_add_customer
+    @options[:status] = 'xyz'
+    response = @gateway.add_customer(@options)
+    assert_failure response
   end
 
   def test_successful_update_customer
     customer = @gateway.add_customer(@options)
-    response = @gateway.update_customer(@options, customer.params["customerkey"])
+    @options[:customerkey] = customer.params["customerkey"]
+    response = @gateway.update_customer(@options)
     assert_success response
   end
 
@@ -153,7 +158,8 @@ class RemoteDirectConnectTest < MiniTest::Test
 
   def test_successful_delete_customer
     customer = @gateway.add_customer(@options)
-    response = @gateway.delete_customer(@options, customer.params["customerkey"])
+    @options[:customerkey] = customer.params["customerkey"]
+    response = @gateway.delete_customer(@options)
     assert_success response
   end
 
@@ -161,12 +167,32 @@ class RemoteDirectConnectTest < MiniTest::Test
   end
 
   def test_successful_add_credit_card_info
+    customer = @gateway.add_customer(@options)
+
+    @options[:customerkey] = customer.params["customerkey"]
+    @options[:tokenmode] = 'default'
+    @options[:cardnum] = @credit_card.number
+    @options[:expdate] = @credit_card.month.to_s + @credit_card.year.to_s
+
+    response = @gateway.add_card(@options)
+    assert_success response
   end
 
   def test_failed_add_credit_card_info
   end
 
   def test_successful_update_credit_card_info
+    customer = @gateway.add_customer(@options)
+
+    @options[:customerkey] = customer.params["customerkey"]
+    @options[:tokenmode] = 'default'
+    @options[:cardnum] = @credit_card.number
+    @options[:expdate] = @credit_card.month.to_s + @credit_card.year.to_s
+    @gateway.add_card(@options)
+    @options[:cardnum] = @declined_card.number
+
+    response = @gateway.add_card(@options)
+    assert_success response
   end
 
   def test_failed_update_credit_card_info
