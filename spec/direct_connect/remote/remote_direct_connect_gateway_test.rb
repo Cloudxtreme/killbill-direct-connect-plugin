@@ -139,7 +139,6 @@ class RemoteDirectConnectTest < MiniTest::Test
     assert_success response
   end
 
-  # this does not work yet
   def test_failed_add_customer
     @options[:status] = 'xyz'
     response = @gateway.add_customer(@options)
@@ -154,6 +153,8 @@ class RemoteDirectConnectTest < MiniTest::Test
   end
 
   def test_failed_update_customer
+    response = @gateway.update_customer(@options)
+    assert_failure response
   end
 
   def test_successful_delete_customer
@@ -164,6 +165,8 @@ class RemoteDirectConnectTest < MiniTest::Test
   end
 
   def test_failed_delete_customer
+    response = @gateway.delete_customer(@options)
+    assert_failure response
   end
 
   def test_successful_add_credit_card_info
@@ -179,6 +182,8 @@ class RemoteDirectConnectTest < MiniTest::Test
   end
 
   def test_failed_add_credit_card_info
+    response = @gateway.add_card(@options)
+    assert_failure response
   end
 
   def test_successful_update_credit_card_info
@@ -188,6 +193,7 @@ class RemoteDirectConnectTest < MiniTest::Test
     @options[:tokenmode] = 'default'
     @options[:cardnum] = @credit_card.number
     @options[:expdate] = @credit_card.month.to_s + @credit_card.year.to_s
+
     @gateway.add_card(@options)
     @options[:cardnum] = @declined_card.number
 
@@ -196,7 +202,22 @@ class RemoteDirectConnectTest < MiniTest::Test
   end
 
   def test_failed_update_credit_card_info
+    customer = @gateway.add_customer(@options)
+
+    @options[:customerkey] = customer.params["customerkey"]
+    @options[:tokenmode] = 'default'
+    @options[:cardnum] = @credit_card.number
+    @options[:expdate] = @credit_card.month.to_s + @credit_card.year.to_s
+
+    @gateway.add_card(@options)
+    @options[:cardnum] = nil
+
+    response = @gateway.add_card(@options)
+    assert_failure response
   end
+
+  # Stephen: Not sure how to delete card info because there is no delete option under StoreCard at
+  # https://gateway.1directconnect.com/ws/TestForms/CardSafeTestForm.aspx
 
   def test_successful_delete_credit_card_info
   end

@@ -264,27 +264,27 @@ module KillBill #:nodoc:
 
         service = actionToService(action)
 
+        # special parsing
         case service
           when :manageCustomer
-            if recurringResult = doc.at_xpath("//RecurringResult")
-              errorCode = doc.at_xpath("//RecurringResult/error").content.to_s
-              response[:result] = errorCode == 'OK' ? 0 : nil
-              response[:customerkey] = doc.at_xpath("//RecurringResult/CustomerKey").content.to_i
-            end
+            response[:result] = doc.at_xpath("//RecurringResult/code").content.to_s == 'OK' ? 0 : nil
+            resultToParse = doc.at_xpath('//RecurringResult')
           else
-            # special parsing
             response[:result] = doc.at_xpath("//Response/Result").content.to_i
 
             if el = doc.at_xpath("//Response/PNRef")
               response[:pnref] = el.content.to_i
             end
 
-            # parse everything else
-            doc.at_xpath('//Response').element_children.each do |node|
+            resultToParse = doc.at_xpath('//Response')
+          end
+
+          # parse everything else
+          resultToParse.element_children.each do |node|
               node_sym = node.name.downcase.to_sym
               response[node_sym] ||= normalize(node.content)
-            end
-        end
+          end
+
         response
       end
 
