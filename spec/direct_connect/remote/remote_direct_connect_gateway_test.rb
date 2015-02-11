@@ -135,50 +135,152 @@ class RemoteDirectConnectTest < MiniTest::Test
   # crm
 
   def test_successful_add_customer
+    response = @gateway.add_customer(@options)
+    assert_success response
   end
 
   def test_failed_add_customer
+    @options[:status] = 'xyz'
+    response = @gateway.add_customer(@options)
+    assert_failure response
   end
 
   def test_successful_update_customer
+    customer = @gateway.add_customer(@options)
+    @options[:customerkey] = customer.params["customerkey"]
+    response = @gateway.update_customer(@options)
+    assert_success response
   end
 
   def test_failed_update_customer
+    response = @gateway.update_customer(@options)
+    assert_failure response
   end
 
   def test_successful_delete_customer
+    customer = @gateway.add_customer(@options)
+    @options[:customerkey] = customer.params["customerkey"]
+    response = @gateway.delete_customer(@options)
+    assert_success response
   end
 
   def test_failed_delete_customer
+    response = @gateway.delete_customer(@options)
+    assert_failure response
   end
 
   def test_successful_add_credit_card_info
+    customer = @gateway.add_customer(@options)
+
+    @options[:customerkey] = customer.params["customerkey"]
+    @options[:cardnum] = @credit_card.number
+    @options[:expdate] = @credit_card.month.to_s + @credit_card.year.to_s
+
+    response = @gateway.add_card(@options)
+    assert_success response
   end
 
   def test_failed_add_credit_card_info
+    @options[:customerkey] = 123
+    response = @gateway.add_card(@options)
+    assert_failure response
   end
 
   def test_successful_update_credit_card_info
+    customer = @gateway.add_customer(@options)
+
+    @options[:customerkey] = customer.params["customerkey"]
+    @options[:cardnum] = @credit_card.number
+    @options[:expdate] = @credit_card.month.to_s + @credit_card.year.to_s
+    add_card_response = @gateway.add_card(@options)
+
+    @options[:ccinfokey] = add_card_response.params["ccinfokey"]
+    @options[:cardnum] = @declined_card.number
+
+    update_card_response = @gateway.update_card(@options)
+    assert_success update_card_response
   end
 
   def test_failed_update_credit_card_info
+    customer = @gateway.add_customer(@options)
+
+    @options[:customerkey] = customer.params["customerkey"]
+    @options[:cardnum] = @credit_card.number
+    @options[:expdate] = @credit_card.month.to_s + @credit_card.year.to_s
+    @gateway.add_card(@options)
+
+    @options[:ccinfokey] = nil
+    @options[:cardnum] = nil
+
+    update_card_response = @gateway.update_card(@options)
+    assert_failure update_card_response
   end
 
   def test_successful_delete_credit_card_info
+    customer = @gateway.add_customer(@options)
+
+    @options[:customerkey] = customer.params["customerkey"]
+    @options[:cardnum] = @credit_card.number
+    @options[:expdate] = @credit_card.month.to_s + @credit_card.year.to_s
+    add_card_response = @gateway.add_card(@options)
+
+    @options[:ccinfokey] = add_card_response.params["ccinfokey"]
+
+    delete_card_response = @gateway.delete_card(@options)
+    assert_success delete_card_response
   end
 
   def test_failed_delete_credit_card_info
+    customer = @gateway.add_customer(@options)
+
+    @options[:customerkey] = customer.params["customerkey"]
+    @options[:cardnum] = @credit_card.number
+    @options[:expdate] = @credit_card.month.to_s + @credit_card.year.to_s
+    @gateway.add_card(@options)
+
+    @options[:ccinfokey] = nil
+
+    delete_card_response = @gateway.delete_card(@options)
+    assert_failure delete_card_response
   end
 
   # card safe
 
   def test_successful_store_card
+    customer = @gateway.add_customer(@options)
+
+    @options[:customerkey] = customer.params["customerkey"]
+    @options[:cardnum] = @credit_card.number
+    @options[:expdate] = @credit_card.month.to_s + @credit_card.year.to_s
+
+    response = @gateway.store_card(@options)
+    assert_success response
   end
 
   def test_failed_store_card
+    @options[:customerkey] = 123
+    response = @gateway.store_card(@options)
+    assert_failure response
   end
 
   def test_successful_process_stored_card
+    customer = @gateway.add_customer(@options)
+
+    @options[:customerkey] = customer.params["customerkey"]
+    @options[:cardnum] = @credit_card.number
+    @options[:expdate] = @credit_card.month.to_s + @credit_card.year.to_s
+    store_card_response = @gateway.store_card(@options)
+
+    # still testing this data
+    p store_card_response.params["extdata"]
+    p '~~~~~~~'
+    p store_card_response.params["extdata"]["CardSafeToken"]
+    p '!!!!!'
+
+    @options[:cardtoken] = store_card_response.params["extdata"]["CardSafeToken"].content.to_s
+
+    process_stored_card_response = @gateway.process_stored_card(@options)
+    assert_success process_stored_card_response
   end
 
   def test_failed_process_stored_card

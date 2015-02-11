@@ -17,22 +17,23 @@ module KillBill #:nodoc:
       self.display_name = 'Direct Connect'
 
       DIRECT_CONNECT_CODES = {
-        0 => :success,
-        23 => :invalidAccountNumber,
-        26 => :invalidPnRef,
-        1015 => :noRecordsToProcess
+          0 => :success,
+          23 => :invalidAccountNumber,
+          26 => :invalidPnRef,
+          1015 => :noRecordsToProcess
       }
 
       def initialize(options={})
-        requires!(options, :username, :password)
+        requires!(options, :username, :password, :vendorid)
         @username = options[:username]
         @password = options[:password]
+        @vendor = options[:vendorid]
         super
       end
 
       def purchase(money, payment, options={})
         post = {}
-        
+
         add_required_nil_values(post)
         add_invoice(post, money, options)
         add_payment(post, payment)
@@ -41,7 +42,7 @@ module KillBill #:nodoc:
 
         post[:transtype] = 'sale'
         post[:magdata] = options[:track_data]
-        
+
         commit(:saleCreditCard, post)
       end
 
@@ -70,27 +71,27 @@ module KillBill #:nodoc:
         add_authentication(post, options)
 
         post[:transtype] = 'Capture'
-        post[:pnref] =  authorization
+        post[:pnref] = authorization
 
         commit(:saleCreditCard, post)
       end
 
       def refund(money, payment, authorization, options={})
         post = {}
-        
+
         add_required_nil_values(post)
         add_invoice(post, money, options)
         add_authentication(post, options)
-        
+
         post[:transtype] = 'Return'
-        post[:pnref] =  authorization
+        post[:pnref] = authorization
 
         commit(:returnCreditCard, post)
       end
 
       def void(authorization, options={})
         post = {}
-        
+
         add_authentication(post, options)
 
         post[:cardNum] = nil
@@ -103,7 +104,7 @@ module KillBill #:nodoc:
         post[:nameOnCard] = nil
         post[:transType] = 'void'
         post[:extData] = nil
-        post[:pnRef] =  authorization
+        post[:pnRef] = authorization
         post[:magData] = options[:magData]
 
         commit(:voidCreditCard, post)
@@ -122,10 +123,97 @@ module KillBill #:nodoc:
 
       def scrub(transcript)
         transcript.encode('UTF-8', 'binary', invalid: :replace, undef: :replace, replace: '')
-          .gsub(%r((username=)\w+), '\1[FILTERED]')
-          .gsub(%r((password=)\w+), '\1[FILTERED]')
-          .gsub(%r((cardnum=)\d+), '\1[FILTERED]')
-          .gsub(%r((cvnum=)\d+), '\1[FILTERED]')
+            .gsub(%r((username=)\w+), '\1[FILTERED]')
+            .gsub(%r((password=)\w+), '\1[FILTERED]')
+            .gsub(%r((cardnum=)\d+), '\1[FILTERED]')
+            .gsub(%r((cvnum=)\d+), '\1[FILTERED]')
+      end
+
+      def add_customer(options={})
+        post = {}
+
+        add_authentication(post, options)
+        add_customer_data(post, options)
+
+        post[:transtype] = 'add'
+        commit(:addCustomer, post)
+      end
+
+      def update_customer(options)
+        post = {}
+
+        add_authentication(post, options)
+        add_customer_data(post, options)
+
+        post[:customerkey] = options[:customerkey]
+        post[:transtype] = 'update'
+        commit(:updateCustomer, post)
+      end
+
+      def delete_customer(options)
+        post = {}
+
+        add_authentication(post, options)
+        add_customer_data(post, options)
+
+        post[:customerkey] = options[:customerkey]
+        post[:transtype] = 'delete'
+        commit(:deleteCustomer, post)
+      end
+
+      def add_card(options)
+        post = {}
+
+        add_authentication(post, options)
+        add_credit_card_info(post, options)
+
+        post[:transtype] = 'add'
+        commit(:addCard, post)
+      end
+
+      def update_card(options)
+        post = {}
+
+        add_authentication(post, options)
+        add_credit_card_info(post, options)
+
+        post[:transtype] = 'update'
+        commit(:updateCard, post)
+      end
+
+      def delete_card(options)
+        post = {}
+
+        add_authentication(post, options)
+        add_credit_card_info(post, options)
+
+        post[:transtype] = 'delete'
+        commit(:deleteCard, post)
+      end
+
+      def store_card(options)
+        post = {}
+
+        add_authentication(post, options)
+        store_credit_card_info(post, options)
+
+        post[:tokenmode] = 'default'
+        commit(:storeCard, post)
+      end
+
+      def process_stored_card(options)
+        post = {}
+
+        add_authentication(post, options)
+        process_credit_card_info(post, options)
+
+        post[:transtype] = 'sale'
+        post[:tokenmode] = 'default'
+        commit(:processCreditCard, post)
+      end
+
+      def process_stored_card_recurring(options)
+
       end
 
       private
@@ -133,24 +221,79 @@ module KillBill #:nodoc:
       def add_authentication(post, options)
         post[:username] = @username
         post[:password] = @password
+        post[:vendor] = @vendor
       end
 
       def add_customer_data(post, options)
+        post[:customerkey] = nil
+        post[:customerid] = nil
+        post[:customername] = options[:customername]
+        post[:firstname] = options[:firstname]
+        post[:lastname] = options[:lastname]
+        post[:title] = options[:title]
+        post[:department] = options[:department]
+        post[:street1] = options[:street1]
+        post[:street2] = options[:street2]
+        post[:street3] = options[:street3]
+        post[:city] = options[:city]
+        post[:stateid] = options[:stateid]
+        post[:province] = options[:province]
+        post[:zip] = options[:zip]
+        post[:countryid] = options[:countryid]
+        post[:email] = options[:email]
+        post[:dayphone] = options[:dayphone]
+        post[:nightphone] = options[:nightphone]
+        post[:fax] = options[:fax]
+        post[:mobile] = options[:mobile]
+        post[:status] = options[:status]
+        post[:extdata] = nil
+      end
 
+      def add_credit_card_info(post, options)
+        post[:transtype] = options[:transtype]
+        post[:customerkey] = options[:customerkey]
+        post[:cardinfokey] = options[:ccinfokey]
+        post[:ccaccountnum] = options[:cardnum]
+        post[:ccexpdate] = options[:expdate]
+        post[:ccnameoncard] = options[:nameoncard]
+        post[:ccstreet] = options[:street]
+        post[:cczip] = options[:zip]
+        post[:extdata] = nil
+      end
+
+      def store_credit_card_info(post, options)
+        post[:tokenmode] = options[:tokenmode]
+        post[:cardnum] = options[:cardnum]
+        post[:expdate] = options[:expdate]
+        post[:customerkey] = options[:customerkey]
+        post[:nameoncard] = options[:nameoncard]
+        post[:street] = options[:street]
+        post[:zip] = options[:zip]
+        post[:extdata] = nil
+      end
+
+      def process_credit_card_info(post, options)
+        post[:transtype] = options[:transtype]
+        post[:cardtoken] = options[:cardtoken]
+        post[:tokenmode] = options[:tokenmode]
+        post[:amount] = options[:amount]
+        post[:invnum] = options[:invnum]
+        post[:pnref] = options[:pnref]
+        post[:extdata] = nil
       end
 
       def add_required_nil_values(post)
-          post[:amount] = nil
-          post[:invNum] = nil
-          post[:cardnum] = nil
-          post[:expdate] = nil
-          post[:cvnum] = nil
-          post[:nameoncard] = nil
-          post[:street] = nil
-          post[:zip] = nil
-          post[:extdata] = nil
-          post[:magdata] = nil
-          post[:pnref] =  nil
+        post[:amount] = nil
+        post[:invNum] = nil
+        post[:cardnum] = nil
+        post[:expdate] = nil
+        post[:cvnum] = nil
+        post[:nameoncard] = nil
+        post[:street] = nil
+        post[:zip] = nil
+        post[:extdata] = nil
+        post[:magdata] = nil
+        post[:pnref] = nil
       end
 
       def add_address(post, creditcard, options)
@@ -179,19 +322,30 @@ module KillBill #:nodoc:
         doc.remove_namespaces!
         response = {action: action}
 
-        # special parsing
-        response[:result] = doc.at_xpath("//Response/Result").content.to_i
+        service = actionToService(action)
 
-        if el = doc.at_xpath("//Response/PNRef")
-          response[:pnref] = el.content.to_i
+        # special parsing
+        case service
+          when :manageCustomer, :manageCreditCardInfo
+            response[:result] = doc.at_xpath("//RecurringResult/code").content.to_s == 'OK' ? 0 : nil
+            result_to_parse = doc.at_xpath('//RecurringResult')
+          else
+            response[:result] = doc.at_xpath("//Response/Result").content.to_i
+
+            if el = doc.at_xpath("//Response/PNRef")
+              response[:pnref] = el.content.to_i
+            end
+
+            result_to_parse = doc.at_xpath('//Response')
         end
 
         # parse everything else
-        doc.at_xpath('//Response').element_children.each do |node|
+        result_to_parse.element_children.each do |node|
           node_sym = node.name.downcase.to_sym
           response[node_sym] ||= normalize(node.content)
         end
 
+        p response
         response
       end
 
@@ -202,16 +356,16 @@ module KillBill #:nodoc:
         begin
           data = post_data(action, parameters)
           response = parse(action, ssl_post(url, data))
-        rescue ResponseError => e
+        rescue ActiveMerchant::ResponseError => e
           puts e.response.body
         end
 
         ActiveMerchant::Billing::Response.new(
-          success_from(response),
-          message_from(response),
-          response,
-          authorization: authorization_from(response),
-          test: test?
+            success_from(response),
+            message_from(response),
+            response,
+            authorization: authorization_from(response),
+            test: test?
         )
       end
 
@@ -237,25 +391,35 @@ module KillBill #:nodoc:
 
       def actionToService(action)
         case action
-        when :authCreditCard, :saleCreditCard, :returnCreditCard, :voidCreditCard
-          :processCreditCard
-        when :saleCheck, :authCheck, :returnCheck, :voidCheck
-          :processCheck
-        else
-          action
+          when :authCreditCard, :saleCreditCard, :returnCreditCard, :voidCreditCard
+            :processCreditCard
+          when :saleCheck, :authCheck, :returnCheck, :voidCheck
+            :processCheck
+          when :addCustomer, :updateCustomer, :deleteCustomer
+            :manageCustomer
+          when :addCard, :updateCard, :deleteCard
+            :manageCreditCardInfo
+          when :storeCard, :processStoredCard
+            :storeCardSafeCard
+          else
+            action
         end
       end
 
       def serviceUrl(service)
         case service
-        when :processCreditCard
-          "ws/transact.asmx/ProcessCreditCard"
-        when :processCheck
-          "ws/transact.asmx/ProcessCheck"
-        when :storeCardSafeCard
-          "ws/cardsafe.asmx/StoreCard"
-        when :processCardRecurring
-          "ws/recurring.asmx/ProcessCreditCard"
+          when :processCreditCard
+            "ws/transact.asmx/ProcessCreditCard"
+          when :processCheck
+            "ws/transact.asmx/ProcessCheck"
+          when :storeCardSafeCard
+            "ws/cardsafe.asmx/StoreCard"
+          when :processCardRecurring
+            "ws/recurring.asmx/ProcessCreditCard"
+          when :manageCustomer
+            "/paygate/ws/recurring.asmx/ManageCustomer"
+          when :manageCreditCardInfo
+            "/paygate/ws/recurring.asmx/ManageCreditCardInfo"
         end
       end
 
