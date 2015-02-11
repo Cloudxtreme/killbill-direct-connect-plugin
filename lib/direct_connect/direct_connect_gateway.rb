@@ -129,7 +129,7 @@ module KillBill #:nodoc:
             .gsub(%r((cvnum=)\d+), '\1[FILTERED]')
       end
 
-      def add_customer(options={})
+      def add_customer(options)
         post = {}
 
         add_authentication(post, options)
@@ -161,59 +161,73 @@ module KillBill #:nodoc:
         commit(:deleteCustomer, post)
       end
 
-      def add_card(options)
+      def add_card(payment, options)
         post = {}
 
         add_authentication(post, options)
+        add_payment(post, payment)
         add_credit_card_info(post, options)
 
         post[:transtype] = 'add'
         commit(:addCard, post)
       end
 
-      def update_card(options)
+      def update_card(payment, options)
         post = {}
 
         add_authentication(post, options)
+        add_payment(post, payment)
         add_credit_card_info(post, options)
 
         post[:transtype] = 'update'
         commit(:updateCard, post)
       end
 
-      def delete_card(options)
+      def delete_card(payment, options)
         post = {}
 
         add_authentication(post, options)
+        add_payment(post, payment)
         add_credit_card_info(post, options)
 
         post[:transtype] = 'delete'
         commit(:deleteCard, post)
       end
 
-      def store_card(options)
+      def store_card(payment, options)
         post = {}
 
         add_authentication(post, options)
         store_credit_card_info(post, options)
+        add_address(post, payment, options)
+        add_payment(post, payment)
 
         post[:tokenmode] = 'default'
         commit(:storeCard, post)
       end
 
-      def process_stored_card(options)
+      def process_stored_card(money, options)
         post = {}
 
         add_authentication(post, options)
+        add_invoice(post, money, options)
+
         process_credit_card_info(post, options)
 
         post[:transtype] = 'sale'
         post[:tokenmode] = 'default'
-        commit(:processCreditCard, post)
+        commit(:processCardSafeCard, post)
       end
 
-      def process_stored_card_recurring(options)
+      def process_stored_card_recurring(money, options)
+        post = {}
 
+        add_authentication(post, options)
+        add_invoice(post, money, options)
+
+        post[:ccinfokey] = options[:ccinfokey]
+        post[:extdata] = nil
+        commit(:processCardRecurring, post)
       end
 
       private
@@ -225,25 +239,26 @@ module KillBill #:nodoc:
       end
 
       def add_customer_data(post, options)
+        # these do not match up well with options[:billing_address]
         post[:customerkey] = nil
         post[:customerid] = nil
-        post[:customername] = options[:customername]
+        post[:customername] = options[:billing_address][:name]
         post[:firstname] = options[:firstname]
         post[:lastname] = options[:lastname]
         post[:title] = options[:title]
-        post[:department] = options[:department]
-        post[:street1] = options[:street1]
-        post[:street2] = options[:street2]
+        post[:department] = options[:billing_address][:company]
+        post[:street1] = options[:billing_address][:address1]
+        post[:street2] = options[:billing_address][:address2]
         post[:street3] = options[:street3]
-        post[:city] = options[:city]
-        post[:stateid] = options[:stateid]
+        post[:city] = options[:billing_address][:city]
+        post[:stateid] = options[:billing_address][:state]
         post[:province] = options[:province]
-        post[:zip] = options[:zip]
-        post[:countryid] = options[:countryid]
+        post[:zip] = options[:billing_address][:zip]
+        post[:countryid] = options[:billing_address][:country]
         post[:email] = options[:email]
-        post[:dayphone] = options[:dayphone]
+        post[:dayphone] = options[:billing_address][:phone]
         post[:nightphone] = options[:nightphone]
-        post[:fax] = options[:fax]
+        post[:fax] = options[:billing_address][:fax]
         post[:mobile] = options[:mobile]
         post[:status] = options[:status]
         post[:extdata] = nil
@@ -253,8 +268,9 @@ module KillBill #:nodoc:
         post[:transtype] = options[:transtype]
         post[:customerkey] = options[:customerkey]
         post[:cardinfokey] = options[:ccinfokey]
-        post[:ccaccountnum] = options[:cardnum]
-        post[:ccexpdate] = options[:expdate]
+        # direct connect uses different fields in different places
+        post[:ccaccountnum] = post[:cardnum]
+        post[:ccexpdate] = post[:expdate]
         post[:ccnameoncard] = options[:nameoncard]
         post[:ccstreet] = options[:street]
         post[:cczip] = options[:zip]
@@ -263,12 +279,7 @@ module KillBill #:nodoc:
 
       def store_credit_card_info(post, options)
         post[:tokenmode] = options[:tokenmode]
-        post[:cardnum] = options[:cardnum]
-        post[:expdate] = options[:expdate]
         post[:customerkey] = options[:customerkey]
-        post[:nameoncard] = options[:nameoncard]
-        post[:street] = options[:street]
-        post[:zip] = options[:zip]
         post[:extdata] = nil
       end
 
@@ -276,8 +287,6 @@ module KillBill #:nodoc:
         post[:transtype] = options[:transtype]
         post[:cardtoken] = options[:cardtoken]
         post[:tokenmode] = options[:tokenmode]
-        post[:amount] = options[:amount]
-        post[:invnum] = options[:invnum]
         post[:pnref] = options[:pnref]
         post[:extdata] = nil
       end
@@ -326,11 +335,16 @@ module KillBill #:nodoc:
 
         # special parsing
         case service
-          when :manageCustomer, :manageCreditCardInfo
+          when :manageCustomer, :manageCreditCardInfo, :processCardRecurring
             response[:result] = doc.at_xpath("//RecurringResult/code").content.to_s == 'OK' ? 0 : nil
             result_to_parse = doc.at_xpath('//RecurringResult')
           else
             response[:result] = doc.at_xpath("//Response/Result").content.to_i
+
+            if service == :storeCardSafeCard && doc.at_xpath("//Response/ExtData") != nil
+              token_doc = Nokogiri::XML(doc.at_xpath("//Response/ExtData").content.to_s)
+              response[:cardtoken] = token_doc.at_xpath("//CardSafeToken").content.to_s
+            end
 
             if el = doc.at_xpath("//Response/PNRef")
               response[:pnref] = el.content.to_i
@@ -345,7 +359,6 @@ module KillBill #:nodoc:
           response[node_sym] ||= normalize(node.content)
         end
 
-        p response
         response
       end
 
@@ -414,8 +427,10 @@ module KillBill #:nodoc:
             "ws/transact.asmx/ProcessCheck"
           when :storeCardSafeCard
             "ws/cardsafe.asmx/StoreCard"
+          when :processCardSafeCard
+            "ws/cardsafe.asmx/ProcessCreditCard"
           when :processCardRecurring
-            "ws/recurring.asmx/ProcessCreditCard"
+            "paygate/ws/recurring.asmx/ProcessCreditCard"
           when :manageCustomer
             "/paygate/ws/recurring.asmx/ManageCustomer"
           when :manageCreditCardInfo
