@@ -18,13 +18,14 @@ module KillBill #:nodoc:
 
       DIRECT_CONNECT_CODES = {
           0 => :success,
+          12 => :verificationRejected,
           23 => :invalidAccountNumber,
           26 => :invalidPnRef,
           1015 => :noRecordsToProcess
       }
 
       def initialize(options={})
-        requires!(options, :username, :password, :vendorid)
+        requires!(options, :username, :password)
         @username = options[:username]
         @password = options[:password]
         @vendor = options[:vendorid]
