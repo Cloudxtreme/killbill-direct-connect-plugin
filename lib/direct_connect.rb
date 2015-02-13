@@ -55,3 +55,5 @@ require 'direct_connect/models/payment_method'
 require 'direct_connect/models/response'
 require 'direct_connect/models/transaction'
 
+require 'direct_connect/entities/address'
+require 'direct_connect/entities/customer'
