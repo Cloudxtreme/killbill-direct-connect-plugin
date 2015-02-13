@@ -18,10 +18,10 @@ module KillBill #:nodoc:
 
       DIRECT_CONNECT_CODES = {
           0 => :success,
-          12 => :verificationRejected,
-          23 => :invalidAccountNumber,
-          26 => :invalidPnRef,
-          1015 => :noRecordsToProcess
+          12 => :verification_rejected,
+          23 => :invalid_account_number,
+          26 => :invalid_pnref,
+          1015 => :no_records_to_process
       }
 
       def initialize(options={})
@@ -43,7 +43,7 @@ module KillBill #:nodoc:
 
         post[:transtype] = 'sale'
 
-        commit(:saleCreditCard, post)
+        commit(:sale_credit_card, post)
       end
 
       def authorize(money, credit_card, customer, order_id)
@@ -57,7 +57,7 @@ module KillBill #:nodoc:
 
         post[:transtype] = 'Auth'
 
-        commit(:authCreditCard, post)
+        commit(:auth_credit_card, post)
       end
 
       # could not implement remote tests for capture due to it not being enabled on our gateway
@@ -72,7 +72,7 @@ module KillBill #:nodoc:
         post[:transtype] = 'Capture'
         post[:pnref] = authorization
 
-        commit(:saleCreditCard, post)
+        commit(:sale_credit_card, post)
       end
 
       def refund(money, authorization, order_id)
@@ -85,7 +85,7 @@ module KillBill #:nodoc:
         post[:transtype] = 'Return'
         post[:pnref] = authorization
 
-        commit(:returnCreditCard, post)
+        commit(:return_credit_card, post)
       end
 
       def void(authorization, order_id)
@@ -98,7 +98,7 @@ module KillBill #:nodoc:
         post[:transtype] = 'void'
         post[:pnref] = authorization
 
-        commit(:voidCreditCard, post)
+        commit(:void_credit_card, post)
       end
 
       def verify(credit_card, customer, order_id)
@@ -127,7 +127,8 @@ module KillBill #:nodoc:
         add_customer_data(post, customer)
 
         post[:transtype] = 'add'
-        commit(:addCustomer, post)
+
+        commit(:add_customer, post)
       end
 
       def update_customer(customer)
@@ -137,7 +138,8 @@ module KillBill #:nodoc:
         add_customer_data(post, customer)
 
         post[:transtype] = 'update'
-        commit(:updateCustomer, post)
+
+        commit(:update_customer, post)
       end
 
       def delete_customer(customer)
@@ -147,7 +149,8 @@ module KillBill #:nodoc:
         add_customer_data(post, customer)
 
         post[:transtype] = 'delete'
-        commit(:deleteCustomer, post)
+
+        commit(:delete_customer, post)
       end
 
       def add_card(credit_card, customer)
@@ -157,7 +160,8 @@ module KillBill #:nodoc:
         add_credit_card_info(post, customer, credit_card, nil)
 
         post[:transtype] = 'add'
-        commit(:addCard, post)
+
+        commit(:add_card, post)
       end
 
       def update_card(credit_card, customer, card_info_key)
@@ -167,7 +171,8 @@ module KillBill #:nodoc:
         add_credit_card_info(post, customer, credit_card, card_info_key)
 
         post[:transtype] = 'update'
-        commit(:updateCard, post)
+
+        commit(:update_card, post)
       end
 
       def delete_card(credit_card, customer, card_info_key)
@@ -177,19 +182,21 @@ module KillBill #:nodoc:
         add_credit_card_info(post, customer, credit_card, card_info_key)
 
         post[:transtype] = 'delete'
-        commit(:deleteCard, post)
+
+        commit(:delete_card, post)
       end
 
       def store_card(credit_card, customer)
         post = {}
 
         add_authentication(post)
-        store_credit_card_info(post, customer)
+        add_store_credit_card_info(post, customer)
         add_address(post, credit_card, customer)
         add_payment(post, credit_card)
 
         post[:tokenmode] = 'default'
-        commit(:storeCard, post)
+
+        commit(:store_card, post)
       end
 
       def process_stored_card(money, order_id, card_token)
@@ -200,7 +207,8 @@ module KillBill #:nodoc:
         process_credit_card_info(post, card_token)
 
         post[:transtype] = 'sale'
-        commit(:processCardSafeCard, post)
+
+        commit(:process_card_safe_card, post)
       end
 
       def process_stored_card_recurring(money, order_id, card_info_key)
@@ -211,7 +219,8 @@ module KillBill #:nodoc:
 
         post[:ccinfokey] = card_info_key
         post[:extdata] = nil
-        commit(:processCardRecurring, post)
+
+        commit(:process_card_recurring, post)
       end
 
       private
@@ -258,7 +267,7 @@ module KillBill #:nodoc:
         post[:extdata] = nil
       end
 
-      def store_credit_card_info(post, customer)
+      def add_store_credit_card_info(post, customer)
         post[:customerkey] = customer.customerkey
         post[:extdata] = nil
       end
@@ -292,7 +301,7 @@ module KillBill #:nodoc:
 
       def add_invoice(post, money, order_id)
         post[:amount] = amount(money)
-        post[:invNum] = order_id
+        post[:invnum] = order_id
       end
 
       def add_payment(post, credit_card)
@@ -312,13 +321,13 @@ module KillBill #:nodoc:
 
         # special parsing
         case service
-          when :manageCustomer, :manageCreditCardInfo, :processCardRecurring
+          when :manage_customer, :manage_credit_card_info, :process_card_recurring
             response[:result] = doc.at_xpath("//RecurringResult/code").content.to_s == 'OK' ? 0 : nil
             result_to_parse = doc.at_xpath('//RecurringResult')
           else
             response[:result] = doc.at_xpath("//Response/Result").content.to_i
 
-            if service == :storeCardSafeCard && doc.at_xpath("//Response/ExtData") != nil
+            if service == :store_card_safe_card && doc.at_xpath("//Response/ExtData") != nil
               token_doc = Nokogiri::XML(doc.at_xpath("//Response/ExtData").content.to_s)
               response[:cardtoken] = token_doc.at_xpath("//CardSafeToken").content.to_s
             end
@@ -349,11 +358,6 @@ module KillBill #:nodoc:
         rescue ActiveMerchant::ResponseError => e
           puts e.response.body
         end
-
-        p '            -=-+-=-   ' + action.to_s + ' post   -=-+-=-            '
-        p data
-        p '            -=-+-=-   ' + action.to_s + ' resp   -=-+-=-            '
-        p response
 
         ActiveMerchant::Billing::Response.new(
             success_from(response),
@@ -386,16 +390,16 @@ module KillBill #:nodoc:
 
       def actionToService(action)
         case action
-          when :authCreditCard, :saleCreditCard, :returnCreditCard, :voidCreditCard
-            :processCreditCard
-          when :saleCheck, :authCheck, :returnCheck, :voidCheck
-            :processCheck
-          when :addCustomer, :updateCustomer, :deleteCustomer
-            :manageCustomer
-          when :addCard, :updateCard, :deleteCard
-            :manageCreditCardInfo
-          when :storeCard, :processStoredCard
-            :storeCardSafeCard
+          when :auth_credit_card, :sale_credit_card, :return_credit_card, :void_credit_card
+            :process_credit_card
+          when :sale_check, :auth_check, :return_check, :void_check
+            :process_check
+          when :add_customer, :update_customer, :delete_customer
+            :manage_customer
+          when :add_card, :update_card, :delete_card
+            :manage_credit_card_info
+          when :store_card, :process_stored_card
+            :store_card_safe_card
           else
             action
         end
@@ -403,19 +407,19 @@ module KillBill #:nodoc:
 
       def serviceUrl(service)
         case service
-          when :processCreditCard
+          when :process_credit_card
             "ws/transact.asmx/ProcessCreditCard"
-          when :processCheck
+          when :process_check
             "ws/transact.asmx/ProcessCheck"
-          when :storeCardSafeCard
+          when :store_card_safe_card
             "ws/cardsafe.asmx/StoreCard"
-          when :processCardSafeCard
+          when :process_card_safe_card
             "ws/cardsafe.asmx/ProcessCreditCard"
-          when :processCardRecurring
+          when :process_card_recurring
             "paygate/ws/recurring.asmx/ProcessCreditCard"
-          when :manageCustomer
+          when :manage_customer
             "/paygate/ws/recurring.asmx/ManageCustomer"
-          when :manageCreditCardInfo
+          when :manage_credit_card_info
             "/paygate/ws/recurring.asmx/ManageCreditCardInfo"
         end
       end

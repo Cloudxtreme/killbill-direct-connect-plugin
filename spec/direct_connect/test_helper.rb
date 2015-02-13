@@ -160,7 +160,7 @@ module DirectConnect
       Billing::CreditCard.new(defaults)
     end
 
-    def address
+    def generate_test_customer
       defaults = {
         firstname: 'Jim',
         lastname:  'Smith',
