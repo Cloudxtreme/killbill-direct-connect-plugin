@@ -138,41 +138,43 @@ module DirectConnect
     DEFAULT_CREDENTIALS = File.join(File.dirname(__FILE__), 'direct_connect_fixtures.yml') unless defined?(DEFAULT_CREDENTIALS)
 
     private
-    def credit_card(number = '4242424242424242', options = {})
+    def credit_card(number = '4242424242424242', customer)
       defaults = {
         :number => number,
         :month => 9,
         :year => Time.now.year + 1,
-        :first_name => 'Longbob',
-        :last_name => 'Longsen',
+        :first_name => customer.firstname,
+        :last_name => customer.lastname,
         :verification_value => '123',
         :brand => 'visa'
-      }.update(options)
+      }
 
       ActiveMerchant::Billing::CreditCard.new(defaults)
     end
 
-    def credit_card_with_track_data(number = '4242424242424242', options = {})
+    def credit_card_with_track_data(number = '4242424242424242')
       defaults = {
         :track_data => '%B' + number + '^LONGSEN/L. ^15121200000000000000**123******?',
-      }.update(options)
+      }
 
       Billing::CreditCard.new(defaults)
     end
 
-    def address(options = {})
-      {
-        name:     'Jim Smith',
-        address1: '1234 My Street',
-        address2: 'Apt 1',
-        company:  'Widgets Inc',
-        city:     'Ottawa',
-        state:    'ON',
-        zip:      'K1C2N6',
-        country:  'CA',
-        phone:    '(555)555-5555',
-        fax:      '(555)555-6666'
-      }.update(options)
+    def generate_test_customer
+      defaults = {
+        firstname: 'Jim',
+        lastname:  'Smith',
+        street1:   '1234 My Street',
+        street2:   'Apt 1',
+        company:   'Widgets Inc',
+        city:      'Ottawa',
+        state:     'ON',
+        zip:       'K1C2N6',
+        country:   'CA',
+        dayphone:  '(555)555-5555',
+        fax:       '(555)555-6666'
+      }
+      KillBill::DirectConnect::Customer.new(defaults)
     end
 
     def generate_unique_id
