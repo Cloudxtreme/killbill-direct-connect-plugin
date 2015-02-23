@@ -21,6 +21,9 @@ module KillBill #:nodoc:
           12 => :verification_rejected,
           23 => :invalid_account_number,
           26 => :invalid_pnref,
+          113 => :sales_cap_exceeded,
+          1000 => :invalid_card_token,
+          1001 => :invalid_customer_key,
           1015 => :no_records_to_process
       }
 
@@ -196,7 +199,7 @@ module KillBill #:nodoc:
 
         post[:tokenmode] = 'default'
 
-        commit(:store_card, post)
+        commit(:store_card_safe_card, post)
       end
 
       def process_stored_card(money, order_id, card_token)
@@ -329,7 +332,7 @@ module KillBill #:nodoc:
 
             if service == :store_card_safe_card && doc.at_xpath("//Response/ExtData") != nil
               token_doc = Nokogiri::XML(doc.at_xpath("//Response/ExtData").content.to_s)
-              response[:cardtoken] = token_doc.at_xpath("//CardSafeToken").content.to_s
+              response[:cardtoken] = token_doc.at_xpath("//CardSafeToken").to_s
             end
 
             if el = doc.at_xpath("//Response/PNRef")
@@ -398,8 +401,6 @@ module KillBill #:nodoc:
             :manage_customer
           when :add_card, :update_card, :delete_card
             :manage_credit_card_info
-          when :store_card, :process_stored_card
-            :store_card_safe_card
           else
             action
         end

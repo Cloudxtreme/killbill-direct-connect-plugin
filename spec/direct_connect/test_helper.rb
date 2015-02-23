@@ -138,7 +138,7 @@ module DirectConnect
     DEFAULT_CREDENTIALS = File.join(File.dirname(__FILE__), 'direct_connect_fixtures.yml') unless defined?(DEFAULT_CREDENTIALS)
 
     private
-    def credit_card(number = '4242424242424242', customer)
+    def credit_card(number = '4242424242424242', customer = generate_test_customer)
       defaults = {
         :number => number,
         :month => 9,
