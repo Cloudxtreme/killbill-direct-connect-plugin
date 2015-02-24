@@ -39,7 +39,7 @@ class DirectConnectTest < MiniTest::Test
     response = @gateway.purchase(@amount, @credit_card, @customer, @order_id)
 
     assert_failure response
-    assert_equal :invalid_account_number, KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
+    assert_equal :invalid_account_number, @gateway.get_direct_connect_code(response)
   end
 
   def test_successful_authorize
@@ -58,7 +58,7 @@ class DirectConnectTest < MiniTest::Test
     response = @gateway.authorize(@amount, @credit_card, @customer, @order_id)
 
     assert_failure response
-    assert_equal :invalid_account_number, KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
+    assert_equal :invalid_account_number, @gateway.get_direct_connect_code(response)
   end
 
   def test_successful_capture
@@ -76,7 +76,7 @@ class DirectConnectTest < MiniTest::Test
     response = @gateway.capture(@amount, @authorization, @order_id, @customer)
 
     assert_failure response
-    assert_equal :no_records_to_process, KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
+    assert_equal :no_records_to_process, @gateway.get_direct_connect_code(response)
     assert_equal 'No Records To Process', response.message
   end
 
@@ -114,7 +114,7 @@ class DirectConnectTest < MiniTest::Test
     response = @gateway.void(@authorization, @order_id)
 
     assert_failure response
-    assert_equal :invalid_pnref, KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
+    assert_equal :invalid_pnref, @gateway.get_direct_connect_code(response)
   end
 
   def test_successful_verify
