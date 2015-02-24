@@ -134,7 +134,7 @@ class DirectConnectTest < MiniTest::Test
     response = @gateway.add_customer(@customer)
 
     assert_success response
-    assert_equal :success, KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
+    assert_equal :success, @gateway.get_direct_connect_code(response)
   end
 
   def test_failed_add_customer
@@ -152,7 +152,7 @@ class DirectConnectTest < MiniTest::Test
     response = @gateway.update_customer(@customer)
 
     assert_success response
-    assert_equal :success, KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
+    assert_equal :success, @gateway.get_direct_connect_code(response)
   end
 
   def test_failed_update_customer
@@ -169,7 +169,7 @@ class DirectConnectTest < MiniTest::Test
     response = @gateway.delete_customer(@customer)
 
     assert_success response
-    assert_equal :success, KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
+    assert_equal :success, @gateway.get_direct_connect_code(response)
   end
 
   def test_failed_delete_customer
@@ -186,7 +186,7 @@ class DirectConnectTest < MiniTest::Test
     response = @gateway.add_card(@credit_card, @customer)
 
     assert_success response
-    assert_equal :success, KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
+    assert_equal :success, @gateway.get_direct_connect_code(response)
   end
 
   def test_failed_add_credit_card_info
@@ -203,7 +203,7 @@ class DirectConnectTest < MiniTest::Test
     response = @gateway.update_card(@credit_card, @customer, @card_info_key)
 
     assert_success response
-    assert_equal :success, KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
+    assert_equal :success, @gateway.get_direct_connect_code(response)
   end
 
   def test_failed_update_credit_card_info
@@ -220,7 +220,7 @@ class DirectConnectTest < MiniTest::Test
     response = @gateway.delete_card(@credit_card, @customer, @card_info_key)
 
     assert_success response
-    assert_equal :success, KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
+    assert_equal :success, @gateway.get_direct_connect_code(response)
   end
 
   def test_failed_delete_credit_card_info
@@ -239,7 +239,7 @@ class DirectConnectTest < MiniTest::Test
     response = @gateway.store_card(@credit_card, @customer)
 
     assert_success response
-    assert_equal :success, KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
+    assert_equal :success, @gateway.get_direct_connect_code(response)
   end
 
   def test_failed_store_card
@@ -256,7 +256,7 @@ class DirectConnectTest < MiniTest::Test
     response = @gateway.process_stored_card(@amount, @order_id, @card_token)
 
     assert_success response
-    assert_equal :success, KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
+    assert_equal :success, @gateway.get_direct_connect_code(response)
   end
 
   def test_failed_process_stored_card
@@ -274,7 +274,7 @@ class DirectConnectTest < MiniTest::Test
     response = @gateway.process_stored_card_recurring(@amount, @order_id, @card_info_key)
 
     assert_success response
-    assert_equal :success, KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
+    assert_equal :success, @gateway.get_direct_connect_code(response)
   end
 
   def test_failed_process_stored_card_recurring

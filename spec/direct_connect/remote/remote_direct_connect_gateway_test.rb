@@ -51,7 +51,7 @@ class RemoteDirectConnectTest < MiniTest::Test
     response = @gateway.purchase(@amount, @declined_card, @customer, @order_id)
 
     assert_failure response
-    assert_equal :invalid_account_number, KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
+    assert_equal :invalid_account_number, @gateway.get_direct_connect_code(response)
     assert_equal 'Invalid Account Number', response.message
   end
 
@@ -64,7 +64,7 @@ class RemoteDirectConnectTest < MiniTest::Test
     response = @gateway.authorize(@amount, @declined_card, @customer, @order_id)
     assert_failure response
 
-    assert_equal :invalid_account_number, KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
+    assert_equal :invalid_account_number, @gateway.get_direct_connect_code(response)
     assert_equal 'Invalid Account Number', response.message
   end
 
@@ -118,7 +118,7 @@ class RemoteDirectConnectTest < MiniTest::Test
     response = @gateway.verify(@declined_card, @customer, @order_id)
     assert_failure response
     assert_match "Invalid Account Number", response.message
-    assert_equal :invalid_account_number, KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
+    assert_equal :invalid_account_number, @gateway.get_direct_connect_code(response)
   end
 
   def test_invalid_login

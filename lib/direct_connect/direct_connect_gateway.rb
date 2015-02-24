@@ -35,6 +35,10 @@ module KillBill #:nodoc:
         super
       end
 
+      def get_direct_connect_code(response)
+        KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
+      end
+
       def purchase(money, credit_card, customer, order_id)
         post = {}
 
@@ -320,7 +324,7 @@ module KillBill #:nodoc:
         doc.remove_namespaces!
         response = {action: action}
 
-        service = actionToService(action)
+        service = action_to_service(action)
 
         # special parsing
         case service
@@ -353,8 +357,8 @@ module KillBill #:nodoc:
 
       def commit(action, parameters)
         url = (test? ? test_url : live_url)
-        service = actionToService(action)
-        url = "#{url}#{serviceUrl(service)}"
+        service = action_to_service(action)
+        url = "#{url}#{service_url(service)}"
         begin
           data = post_data(action, parameters)
           response = parse(action, ssl_post(url, data))
@@ -391,7 +395,7 @@ module KillBill #:nodoc:
         end.compact.join('&')
       end
 
-      def actionToService(action)
+      def action_to_service(action)
         case action
           when :auth_credit_card, :sale_credit_card, :return_credit_card, :void_credit_card
             :process_credit_card
@@ -406,7 +410,7 @@ module KillBill #:nodoc:
         end
       end
 
-      def serviceUrl(service)
+      def service_url(service)
         case service
           when :process_credit_card
             "ws/transact.asmx/ProcessCreditCard"
