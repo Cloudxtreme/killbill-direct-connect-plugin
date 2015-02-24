@@ -21,6 +21,9 @@ module KillBill #:nodoc:
           12 => :verification_rejected,
           23 => :invalid_account_number,
           26 => :invalid_pnref,
+          113 => :sales_cap_exceeded,
+          1000 => :invalid_card_token,
+          1001 => :invalid_customer_key,
           1015 => :no_records_to_process
       }
 
@@ -30,6 +33,10 @@ module KillBill #:nodoc:
         @password = options[:password]
         @vendor = options[:vendorid]
         super
+      end
+
+      def get_direct_connect_code(response)
+        KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
       end
 
       def purchase(money, credit_card, customer, order_id)
@@ -196,7 +203,7 @@ module KillBill #:nodoc:
 
         post[:tokenmode] = 'default'
 
-        commit(:store_card, post)
+        commit(:store_card_safe_card, post)
       end
 
       def process_stored_card(money, order_id, card_token)
@@ -317,7 +324,7 @@ module KillBill #:nodoc:
         doc.remove_namespaces!
         response = {action: action}
 
-        service = actionToService(action)
+        service = action_to_service(action)
 
         # special parsing
         case service
@@ -329,7 +336,7 @@ module KillBill #:nodoc:
 
             if service == :store_card_safe_card && doc.at_xpath("//Response/ExtData") != nil
               token_doc = Nokogiri::XML(doc.at_xpath("//Response/ExtData").content.to_s)
-              response[:cardtoken] = token_doc.at_xpath("//CardSafeToken").content.to_s
+              response[:cardtoken] = token_doc.at_xpath("//CardSafeToken").to_s
             end
 
             if el = doc.at_xpath("//Response/PNRef")
@@ -350,8 +357,8 @@ module KillBill #:nodoc:
 
       def commit(action, parameters)
         url = (test? ? test_url : live_url)
-        service = actionToService(action)
-        url = "#{url}#{serviceUrl(service)}"
+        service = action_to_service(action)
+        url = "#{url}#{service_url(service)}"
         begin
           data = post_data(action, parameters)
           response = parse(action, ssl_post(url, data))
@@ -388,7 +395,7 @@ module KillBill #:nodoc:
         end.compact.join('&')
       end
 
-      def actionToService(action)
+      def action_to_service(action)
         case action
           when :auth_credit_card, :sale_credit_card, :return_credit_card, :void_credit_card
             :process_credit_card
@@ -398,14 +405,12 @@ module KillBill #:nodoc:
             :manage_customer
           when :add_card, :update_card, :delete_card
             :manage_credit_card_info
-          when :store_card, :process_stored_card
-            :store_card_safe_card
           else
             action
         end
       end
 
-      def serviceUrl(service)
+      def service_url(service)
         case service
           when :process_credit_card
             "ws/transact.asmx/ProcessCreditCard"

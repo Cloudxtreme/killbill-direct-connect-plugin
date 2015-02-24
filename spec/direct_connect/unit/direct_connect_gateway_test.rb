@@ -6,22 +6,18 @@ require 'direct_connect'
 
 class DirectConnectTest < MiniTest::Test
   def setup
-    @authorization = 12345
-
     @gateway = KillBill::DirectConnect::Gateway.new(
       username: 'login',
       password: 'password'
     )
 
+    @customer = generate_test_customer
     @credit_card = credit_card
     @amount = 100
-
-    @options = {
-      order_id: '1',
-      billing_address: address,
-      description: 'Store Purchase'
-    }
-
+    @description = 'Store Purchase'
+    @order_id = '1'
+    @card_info_key = nil
+    @card_token = nil
     @authorization = 12345
   end
 
@@ -30,7 +26,7 @@ class DirectConnectTest < MiniTest::Test
   def test_successful_purchase
     @gateway.expects(:ssl_post).returns(successful_purchase_response)
 
-    response = @gateway.purchase(@amount, @credit_card, @options)
+    response = @gateway.purchase(@amount, @credit_card, @customer, @order_id)
     
     assert_success response
     assert_equal 12345, response.authorization
@@ -40,15 +36,16 @@ class DirectConnectTest < MiniTest::Test
     skip 'fix later'
     @gateway.expects(:ssl_post).returns(failed_purchase_response)
 
-    response = @gateway.purchase(@amount, @credit_card, @options)
+    response = @gateway.purchase(@amount, @credit_card, @customer, @order_id)
+
     assert_failure response
-    assert_equal :invalidAccountNumber, KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
+    assert_equal :invalid_account_number, @gateway.get_direct_connect_code(response)
   end
 
   def test_successful_authorize
     @gateway.expects(:ssl_post).returns(successful_authorize_response)
 
-    response = @gateway.authorize(@amount, @credit_card, @options)
+    response = @gateway.authorize(@amount, @credit_card, @customer, @order_id)
 
     assert_success response
     assert_equal 'Approved', response.message
@@ -58,16 +55,16 @@ class DirectConnectTest < MiniTest::Test
   def test_failed_authorize
     @gateway.expects(:ssl_post).returns(failed_authorize_response)
 
-    response = @gateway.authorize(@amount, @credit_card, @options)
-    assert_failure response
+    response = @gateway.authorize(@amount, @credit_card, @customer, @order_id)
 
-    assert_equal :invalidAccountNumber, KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
+    assert_failure response
+    assert_equal :invalid_account_number, @gateway.get_direct_connect_code(response)
   end
 
   def test_successful_capture
     @gateway.expects(:ssl_post).returns(successful_capture_response)
 
-    response = @gateway.capture(@amount, @authorization, @options)
+    response = @gateway.capture(@amount, @authorization, @order_id, @customer)
 
     assert_success response
     assert_equal 'Approved', response.message
@@ -76,17 +73,17 @@ class DirectConnectTest < MiniTest::Test
   def test_failed_capture
     @gateway.expects(:ssl_post).returns(failed_capture_response)
 
-    response = @gateway.capture(@amount, @authorization, @options)
+    response = @gateway.capture(@amount, @authorization, @order_id, @customer)
 
     assert_failure response
-    assert_equal :noRecordsToProcess, KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
+    assert_equal :no_records_to_process, @gateway.get_direct_connect_code(response)
     assert_equal 'No Records To Process', response.message
   end
 
   def test_successful_refund
     @gateway.expects(:ssl_post).returns(successful_refund_response)
 
-    response = @gateway.refund(@amount, @credit_card, @authorization, @options)
+    response = @gateway.refund(@amount, @authorization, @order_id)
 
     assert_success response
     assert_equal 'Approved', response.message
@@ -95,7 +92,7 @@ class DirectConnectTest < MiniTest::Test
   def test_failed_refund
     @gateway.expects(:ssl_post).returns(failed_refund_response)
 
-    response = @gateway.refund(@amount+1, @credit_card, @authorization, @options)
+    response = @gateway.refund(@amount+1, @authorization, @order_id)
 
     assert_failure response
     assert_equal 'Cannot Exceed Sales Cap', response.message
@@ -104,7 +101,7 @@ class DirectConnectTest < MiniTest::Test
   def test_successful_void
     @gateway.expects(:ssl_post).returns(successful_void_response)
 
-    response = @gateway.void(@authorization, @options)
+    response = @gateway.void(@authorization, @order_id)
 
     assert_success response
     assert_equal 'Approved', response.message
@@ -114,10 +111,10 @@ class DirectConnectTest < MiniTest::Test
   def test_failed_void
     @gateway.expects(:ssl_post).returns(failed_void_response)
 
-    response = @gateway.void(@authorization, @options)
-    assert_failure response
+    response = @gateway.void(@authorization, @order_id)
 
-    assert_equal :invalidPnRef, KillBill::DirectConnect::Gateway::DIRECT_CONNECT_CODES[response.params['result']]
+    assert_failure response
+    assert_equal :invalid_pnref, @gateway.get_direct_connect_code(response)
   end
 
   def test_successful_verify
@@ -132,60 +129,160 @@ class DirectConnectTest < MiniTest::Test
   # crm
 
   def test_successful_add_customer
+    @gateway.expects(:ssl_post).returns(successful_add_customer_response)
+
+    response = @gateway.add_customer(@customer)
+
+    assert_success response
+    assert_equal :success, @gateway.get_direct_connect_code(response)
   end
 
   def test_failed_add_customer
+    @gateway.expects(:ssl_post).returns(failed_add_customer_response)
+
+    response = @gateway.add_customer(@customer)
+
+    assert_failure response
+    assert_equal 'Invalid_Argument', response.params["code"]
   end
 
   def test_successful_update_customer
+    @gateway.expects(:ssl_post).returns(successful_update_customer_response)
+
+    response = @gateway.update_customer(@customer)
+
+    assert_success response
+    assert_equal :success, @gateway.get_direct_connect_code(response)
   end
 
   def test_failed_update_customer
+    @gateway.expects(:ssl_post).returns(failed_update_customer_response)
+
+    response = @gateway.update_customer(@customer)
+
+    assert_failure response
   end
 
   def test_successful_delete_customer
+    @gateway.expects(:ssl_post).returns(successful_delete_customer_response)
+
+    response = @gateway.delete_customer(@customer)
+
+    assert_success response
+    assert_equal :success, @gateway.get_direct_connect_code(response)
   end
 
   def test_failed_delete_customer
+    @gateway.expects(:ssl_post).returns(failed_delete_customer_response)
+
+    response = @gateway.delete_customer(@customer)
+
+    assert_failure response
   end
 
   def test_successful_add_credit_card_info
+    @gateway.expects(:ssl_post).returns(successful_add_credit_card_info_response)
+
+    response = @gateway.add_card(@credit_card, @customer)
+
+    assert_success response
+    assert_equal :success, @gateway.get_direct_connect_code(response)
   end
 
   def test_failed_add_credit_card_info
+    @gateway.expects(:ssl_post).returns(failed_add_credit_card_info_response)
+
+    response = @gateway.add_card(@credit_card, @customer)
+
+    assert_failure response
   end
 
   def test_successful_update_credit_card_info
+    @gateway.expects(:ssl_post).returns(successful_update_credit_card_info_response)
+
+    response = @gateway.update_card(@credit_card, @customer, @card_info_key)
+
+    assert_success response
+    assert_equal :success, @gateway.get_direct_connect_code(response)
   end
 
   def test_failed_update_credit_card_info
+    @gateway.expects(:ssl_post).returns(failed_update_credit_card_info_response)
+
+    response = @gateway.update_card(@credit_card, @customer, @card_info_key)
+
+    assert_failure response
   end
 
   def test_successful_delete_credit_card_info
+    @gateway.expects(:ssl_post).returns(successful_delete_credit_card_info_response)
+
+    response = @gateway.delete_card(@credit_card, @customer, @card_info_key)
+
+    assert_success response
+    assert_equal :success, @gateway.get_direct_connect_code(response)
   end
 
   def test_failed_delete_credit_card_info
+    @gateway.expects(:ssl_post).returns(failed_delete_credit_card_info_response)
+
+    response = @gateway.delete_card(@credit_card, @customer, @card_info_key)
+
+    assert_failure response
   end
 
   # card safe
 
   def test_successful_store_card
+    @gateway.expects(:ssl_post).returns(successful_store_card_response)
+
+    response = @gateway.store_card(@credit_card, @customer)
+
+    assert_success response
+    assert_equal :success, @gateway.get_direct_connect_code(response)
   end
 
   def test_failed_store_card
+    @gateway.expects(:ssl_post).returns(failed_store_card_response)
+
+    response = @gateway.store_card(@credit_card, @customer)
+
+    assert_failure response
   end
 
   def test_successful_process_stored_card
+    @gateway.expects(:ssl_post).returns(successful_process_stored_card_response)
+
+    response = @gateway.process_stored_card(@amount, @order_id, @card_token)
+
+    assert_success response
+    assert_equal :success, @gateway.get_direct_connect_code(response)
   end
 
   def test_failed_process_stored_card
+    @gateway.expects(:ssl_post).returns(failed_process_stored_card_response)
+
+    response = @gateway.process_stored_card(@amount, @order_id, @card_token)
+
+    assert_failure response
   end
 
   # these are the 'processcreditcard' methods under the recurring tab in the docs
   def test_successful_process_stored_card_recurring
+    @gateway.expects(:ssl_post).returns(successful_process_stored_card_recurring_response)
+
+    response = @gateway.process_stored_card_recurring(@amount, @order_id, @card_info_key)
+
+    assert_success response
+    assert_equal :success, @gateway.get_direct_connect_code(response)
   end
 
-  def test_successful_process_stored_card_recurring
+  def test_failed_process_stored_card_recurring
+    @gateway.expects(:ssl_post).returns(failed_process_stored_card_recurring_response)
+
+    response = @gateway.process_stored_card_recurring(@amount, @order_id, @card_info_key)
+
+    assert_failure response
   end
 
   def test_scrub
@@ -646,59 +743,606 @@ Conn close
   # crm
 
   def successful_add_customer_response
+    %(
+<RecurringResult>
+  <CustomerKey>123456</CustomerKey>
+  <ContractKey>
+  </ContractKey>
+  <CcInfoKey>
+  </CcInfoKey>
+  <CheckInfoKey>
+  </CheckInfoKey>
+  <code>OK</code>
+  <error>OK</error>
+  <Partner>
+  </Partner>
+  <Vendor>0000</Vendor>
+  <Username>username</Username>
+  <Result>
+  </Result>
+  <AuthCode>
+  </AuthCode>
+  <PNRef>
+  </PNRef>
+  <Message>
+  </Message>
+  <ExtData>
+  </ExtData>
+</RecurringResult>
+      )
   end
 
   def failed_add_customer_response
+    %(
+<RecurringResult>
+  <CustomerKey>
+  </CustomerKey>
+  <ContractKey>
+  </ContractKey>
+  <CcInfoKey>
+  </CcInfoKey>
+  <CheckInfoKey>
+  </CheckInfoKey>
+  <code>Invalid_Argument</code>
+  <error>Invalid Status, expecting ACTIVE, INACTIVE, PENDING or CLOSED</error>
+  <Partner>
+  </Partner>
+  <Vendor>
+  </Vendor>
+  <Username>
+  </Username>
+  <Result>
+  </Result>
+  <AuthCode>
+  </AuthCode>
+  <PNRef>
+  </PNRef>
+  <Message>
+  </Message>
+  <ExtData>
+  </ExtData>
+</RecurringResult>
+      )
   end
 
   def successful_update_customer_response
+    %(
+<RecurringResult>
+  <CustomerKey>123456</CustomerKey>
+  <ContractKey>
+  </ContractKey>
+  <CcInfoKey>
+  </CcInfoKey>
+  <CheckInfoKey>
+  </CheckInfoKey>
+  <code>OK</code>
+  <error>OK</error>
+  <Partner>
+  </Partner>
+  <Vendor>0000</Vendor>
+  <Username>username</Username>
+  <Result>
+  </Result>
+  <AuthCode>
+  </AuthCode>
+  <PNRef>
+  </PNRef>
+  <Message>
+  </Message>
+  <ExtData>
+  </ExtData>
+</RecurringResult>
+      )
   end
 
   def failed_update_customer_response
+    %(
+<RecurringResult>
+  <CustomerKey>
+  </CustomerKey>
+  <ContractKey>
+  </ContractKey>
+  <CcInfoKey>
+  </CcInfoKey>
+  <CheckInfoKey>
+  </CheckInfoKey>
+  <code>Invalid_Argument</code>
+  <error>Invalid CustomerKey</error>
+  <Partner>237</Partner>
+  <Vendor>0000</Vendor>
+  <Username>username</Username>
+  <Result>
+  </Result>
+  <AuthCode>
+  </AuthCode>
+  <PNRef>
+  </PNRef>
+  <Message>
+  </Message>
+  <ExtData>
+  </ExtData>
+</RecurringResult>
+      )
   end
 
   def successful_delete_customer_response
+    %(
+<RecurringResult>
+  <CustomerKey>123456</CustomerKey>
+  <ContractKey>
+  </ContractKey>
+  <CcInfoKey>
+  </CcInfoKey>
+  <CheckInfoKey>
+  </CheckInfoKey>
+  <code>OK</code>
+  <error>OK</error>
+  <Partner>
+  </Partner>
+  <Vendor>0000</Vendor>
+  <Username>username</Username>
+  <Result>
+  </Result>
+  <AuthCode>
+  </AuthCode>
+  <PNRef>
+  </PNRef>
+  <Message>
+  </Message>
+  <ExtData>
+  </ExtData>
+</RecurringResult>
+      )
   end
 
   def failed_delete_customer_response
+    %(
+<RecurringResult>
+  <CustomerKey>
+  </CustomerKey>
+  <ContractKey>
+  </ContractKey>
+  <CcInfoKey>
+  </CcInfoKey>
+  <CheckInfoKey>
+  </CheckInfoKey>
+  <code>Invalid_Argument</code>
+  <error>Invalid CustomerKey</error>
+  <Partner>237</Partner>
+  <Vendor>0000</Vendor>
+  <Username>username</Username>
+  <Result>
+  </Result>
+  <AuthCode>
+  </AuthCode>
+  <PNRef>
+  </PNRef>
+  <Message>
+  </Message>
+  <ExtData>
+  </ExtData>
+</RecurringResult>
+      )
   end
 
   def successful_add_credit_card_info_response
+    %(
+<RecurringResult>
+  <CustomerKey>
+  </CustomerKey>
+  <ContractKey>
+  </ContractKey>
+  <CcInfoKey>10101010</CcInfoKey>
+  <CheckInfoKey>
+  </CheckInfoKey>
+  <code>OK</code>
+  <error>OK</error>
+  <Partner>123</Partner>
+  <Vendor>1010</Vendor>
+  <Username>username</Username>
+  <Result>
+  </Result>
+  <AuthCode>
+  </AuthCode>
+  <PNRef>
+  </PNRef>
+  <Message>
+  </Message>
+  <ExtData>
+  </ExtData>
+</RecurringResult>
+      )
   end
 
   def failed_add_credit_card_info_response
+    %(
+<RecurringResult>
+  <CustomerKey>
+  </CustomerKey>
+  <ContractKey>
+  </ContractKey>
+  <CcInfoKey>
+  </CcInfoKey>
+  <CheckInfoKey>
+  </CheckInfoKey>
+  <code>Transaction_Type_Not_Supported_By_Host</code>
+  <error>Invalid TransType</error>
+  <Partner>123</Partner>
+  <Vendor>1010</Vendor>
+  <Username>username</Username>
+  <Result>
+  </Result>
+  <AuthCode>
+  </AuthCode>
+  <PNRef>
+  </PNRef>
+  <Message>
+  </Message>
+  <ExtData>
+  </ExtData>
+</RecurringResult>
+      )
   end
 
   def successful_update_credit_card_info_response
+    %(
+<RecurringResult>
+  <CustomerKey>101010</CustomerKey>
+  <ContractKey>
+  </ContractKey>
+  <CcInfoKey>10101010</CcInfoKey>
+  <CheckInfoKey>
+  </CheckInfoKey>
+  <code>OK</code>
+  <error>OK</error>
+  <Partner>123</Partner>
+  <Vendor>1010</Vendor>
+  <Username>username</Username>
+  <Result>
+  </Result>
+  <AuthCode>
+  </AuthCode>
+  <PNRef>
+  </PNRef>
+  <Message>
+  </Message>
+  <ExtData>
+  </ExtData>
+</RecurringResult>
+      )
   end
 
   def failed_update_credit_card_info_response
+    %(
+<RecurringResult>
+  <CustomerKey>
+  </CustomerKey>
+  <ContractKey>
+  </ContractKey>
+  <CcInfoKey>
+  </CcInfoKey>
+  <CheckInfoKey>
+  </CheckInfoKey>
+  <code>Not_Enough_Privilege</code>
+  <error>Not enough privilege to access this CardInfo</error>
+  <Partner>
+  </Partner>
+  <Vendor>
+  </Vendor>
+  <Username>
+  </Username>
+  <Result>
+  </Result>
+  <AuthCode>
+  </AuthCode>
+  <PNRef>
+  </PNRef>
+  <Message>
+  </Message>
+  <ExtData>
+  </ExtData>
+</RecurringResult>
+      )
   end
 
   def successful_delete_credit_card_info_response
+    %(
+<RecurringResult>
+  <CustomerKey>101010</CustomerKey>
+  <ContractKey>
+  </ContractKey>
+  <CcInfoKey>10101010</CcInfoKey>
+  <CheckInfoKey>
+  </CheckInfoKey>
+  <code>OK</code>
+  <error>OK</error>
+  <Partner>123</Partner>
+  <Vendor>1010</Vendor>
+  <Username>username</Username>
+  <Result>
+  </Result>
+  <AuthCode>
+  </AuthCode>
+  <PNRef>
+  </PNRef>
+  <Message>
+  </Message>
+  <ExtData>
+  </ExtData>
+</RecurringResult>
+      )
   end
 
   def failed_delete_credit_card_info_response
+    %(
+<RecurringResult>
+  <CustomerKey>
+  </CustomerKey>
+  <ContractKey>
+  </ContractKey>
+  <CcInfoKey>
+  </CcInfoKey>
+  <CheckInfoKey>
+  </CheckInfoKey>
+  <code>Invalid_Argument</code>
+  <error>Invalid CustomerKey</error>
+  <Partner>
+  </Partner>
+  <Vendor>
+  </Vendor>
+  <Username>
+  </Username>
+  <Result>
+  </Result>
+  <AuthCode>
+  </AuthCode>
+  <PNRef>
+  </PNRef>
+  <Message>
+  </Message>
+  <ExtData>
+  </ExtData>
+</RecurringResult>
+      )
   end
 
   # card safe
 
   def successful_store_card_response
+    %(
+<Response>
+  <Result>0</Result>
+  <RespMSG>Token generated successfully</RespMSG>
+  <Message>
+  </Message>
+  <Message1>
+  </Message1>
+  <Message2>
+  </Message2>
+  <AuthCode>
+  </AuthCode>
+  <PNRef>
+  </PNRef>
+  <HostCode>
+  </HostCode>
+  <HostURL>
+  </HostURL>
+  <ReceiptURL>
+  </ReceiptURL>
+  <GetAVSResult>
+  </GetAVSResult>
+  <GetAVSResultTXT>
+  </GetAVSResultTXT>
+  <GetStreetMatchTXT>
+  </GetStreetMatchTXT>
+  <GetZipMatchTXT>
+  </GetZipMatchTXT>
+  <GetCVResult>
+  </GetCVResult>
+  <GetCVResultTXT>
+  </GetCVResultTXT>
+  <GetGetOrigResult>
+  </GetGetOrigResult>
+  <GetCommercialCard>
+  </GetCommercialCard>
+  <WorkingKey>
+  </WorkingKey>
+  <KeyPointer>
+  </KeyPointer>
+  <ExtData><CardSafeToken>11883130</CardSafeToken></ExtData>
+</Response>
+    )
   end
 
   def failed_store_card_response
+    %(
+<Response>
+  <Result>1001</Result>
+  <RespMSG>CustomerKey must be a valid number</RespMSG>
+  <Message>
+  </Message>
+  <Message1>
+  </Message1>
+  <Message2>
+  </Message2>
+  <AuthCode>
+  </AuthCode>
+  <PNRef>
+  </PNRef>
+  <HostCode>
+  </HostCode>
+  <HostURL>
+  </HostURL>
+  <ReceiptURL>
+  </ReceiptURL>
+  <GetAVSResult>
+  </GetAVSResult>
+  <GetAVSResultTXT>
+  </GetAVSResultTXT>
+  <GetStreetMatchTXT>
+  </GetStreetMatchTXT>
+  <GetZipMatchTXT>
+  </GetZipMatchTXT>
+  <GetCVResult>
+  </GetCVResult>
+  <GetCVResultTXT>
+  </GetCVResultTXT>
+  <GetGetOrigResult>
+  </GetGetOrigResult>
+  <GetCommercialCard>
+  </GetCommercialCard>
+  <WorkingKey>
+  </WorkingKey>
+  <KeyPointer>
+  </KeyPointer>
+  <ExtData></ExtData>
+</Response>
+    )
   end
 
   def successful_process_stored_card_response
+    %(
+<Response>
+  <Result>0</Result>
+  <RespMSG>Approved</RespMSG>
+  <Message>APPROVED</Message>
+  <Message1>
+  </Message1>
+  <Message2>
+  </Message2>
+  <AuthCode>010101</AuthCode>
+  <PNRef>10101010</PNRef>
+  <HostCode>010101</HostCode>
+  <HostURL>
+  </HostURL>
+  <ReceiptURL>
+  </ReceiptURL>
+  <GetAVSResult>A</GetAVSResult>
+  <GetAVSResultTXT>Address Match No Zip Match</GetAVSResultTXT>
+  <GetStreetMatchTXT>Match</GetStreetMatchTXT>
+  <GetZipMatchTXT>No Match</GetZipMatchTXT>
+  <GetCVResult>
+  </GetCVResult>
+  <GetCVResultTXT>
+  </GetCVResultTXT>
+  <GetGetOrigResult>
+  </GetGetOrigResult>
+  <GetCommercialCard>False</GetCommercialCard>
+  <WorkingKey>
+  </WorkingKey>
+  <KeyPointer>
+  </KeyPointer>
+  <ExtData>InvNum=1,CardType=VISA,BatchNum=000000<BatchNum>000000</BatchNum><CardType>VISA</CardType><LastFour>1111</LastFour><ExpDate>0916</ExpDate></ExtData>
+</Response>
+    )
   end
 
   def failed_process_stored_card_response
+    %(
+<Response>
+  <Result>1000</Result>
+  <RespMSG>Invalid Card Token</RespMSG>
+  <Message>
+  </Message>
+  <Message1>
+  </Message1>
+  <Message2>
+  </Message2>
+  <AuthCode>
+  </AuthCode>
+  <PNRef>
+  </PNRef>
+  <HostCode>
+  </HostCode>
+  <HostURL>
+  </HostURL>
+  <ReceiptURL>
+  </ReceiptURL>
+  <GetAVSResult>
+  </GetAVSResult>
+  <GetAVSResultTXT>
+  </GetAVSResultTXT>
+  <GetStreetMatchTXT>
+  </GetStreetMatchTXT>
+  <GetZipMatchTXT>
+  </GetZipMatchTXT>
+  <GetCVResult>
+  </GetCVResult>
+  <GetCVResultTXT>
+  </GetCVResultTXT>
+  <GetGetOrigResult>
+  </GetGetOrigResult>
+  <GetCommercialCard>
+  </GetCommercialCard>
+  <WorkingKey>
+  </WorkingKey>
+  <KeyPointer>
+  </KeyPointer>
+  <ExtData>
+  </ExtData>
+</Response>
+    )
   end
 
   # these are the 'processcreditcard' methods under the recurring tab in the docs
   def successful_process_stored_card_recurring_response
+    %(
+<RecurringResult>
+  <CustomerKey>
+  </CustomerKey>
+  <ContractKey>
+  </ContractKey>
+  <CcInfoKey>
+  </CcInfoKey>
+  <CheckInfoKey>
+  </CheckInfoKey>
+  <code>OK</code>
+  <error>APPROVED</error>
+  <Partner>
+  </Partner>
+  <Vendor>
+  </Vendor>
+  <Username>
+  </Username>
+  <Result>0</Result>
+  <AuthCode>097337</AuthCode>
+  <PNRef>15002203</PNRef>
+  <Message>APPROVED</Message>
+  <ExtData><CardType>VISA</CardType><LastFour>1111</LastFour><ExpDate>0916</ExpDate></ExtData>
+</RecurringResult>
+    )
   end
 
-  def successful_process_stored_card_recurring_response
+  def failed_process_stored_card_recurring_response
+    %(
+<RecurringResult>
+  <CustomerKey>
+  </CustomerKey>
+  <ContractKey>
+  </ContractKey>
+  <CcInfoKey>
+  </CcInfoKey>
+  <CheckInfoKey>
+  </CheckInfoKey>
+  <code>Not_Enough_Privilege</code>
+  <error>Not enough privilege</error>
+  <Partner>
+  </Partner>
+  <Vendor>
+  </Vendor>
+  <Username>
+  </Username>
+  <Result>
+  </Result>
+  <AuthCode>
+  </AuthCode>
+  <PNRef>
+  </PNRef>
+  <Message>
+  </Message>
+  <ExtData>
+  </ExtData>
+</RecurringResult>
+    )
   end
 end
