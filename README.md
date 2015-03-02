@@ -11,14 +11,14 @@ Avoid this by using the [vagrant box](https://github.com/NGPVAN/killbill-you-vag
 
 # install
 
-Run these from inside this repo's directory. In our standard vagrant box, this is at `/vagrant/plugins/killbill-direct-connect-plugin` 
+Run the following commands from inside this repo's directory. In our standard vagrant box, this is at `/vagrant/plugins/killbill-direct-connect-plugin`. Also, do not track this repo with Source Tree. Source tree seems to be locking files, which causes permissions errors. Instead, only push/pull to this repo with git commands.
 
 ```sh
 rbenv local jruby-1.7.17
 mkdir -p ~/.killbill
 cp spec/direct_connect_fixtures.yml ~/.killbill/direct_connect_fixtures.yml # edit the ~ one to have your credentials
 rbenv install jruby-1.7.17 # make sure the right version is installed
-sudo gem install bundler jbundler # install prereq executables
+gem install bundler jbundler # install prereq executables
 rbenv rehash # make sure executables are available
 bundle install # install gems
 bundle exec jbundle install # install jars
@@ -33,6 +33,14 @@ rake test:unit # run all gateway unit tests
 rake test:unit[test_failed_purchase] # run gateway unit test 'test_failed_purchase'
 rake test:remote # run all gateway remote tests
 rake test:remote[test_failed_purchase] # run gateway remote test 'test_failed_purchase'
+```
+
+# rake tasks
+
+You are now ready to run [rake tasks](https://github.com/killbill/killbill-plugin-framework-ruby#rake-tasks). Follow the instructions on that page to build the package. Then run this deploy command:
+
+```sh
+rake killbill:deploy[true,/vagrant/bundles/plugins/ruby]
 ```
 
 # Docs
