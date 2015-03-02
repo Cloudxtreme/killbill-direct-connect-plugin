@@ -18,7 +18,7 @@ rbenv local jruby-1.7.17
 mkdir -p ~/.killbill
 cp spec/direct_connect_fixtures.yml ~/.killbill/direct_connect_fixtures.yml # edit the ~ one to have your credentials
 rbenv install jruby-1.7.17 # make sure the right version is installed
-gem install bundler jbundler # install prereq executables
+sudo gem install bundler jbundler # install prereq executables
 rbenv rehash # make sure executables are available
 bundle install # install gems
 bundle exec jbundle install # install jars
