@@ -11,7 +11,7 @@ Avoid this by using the [vagrant box](https://github.com/NGPVAN/killbill-you-vag
 
 # install
 
-Run the following commands from inside this repo's directory. In our standard vagrant box, this is at `/vagrant/plugins/killbill-direct-connect-plugin`. Also, do not track this repo with Source Tree. Source tree seems to be locking files, which causes permissions errors. Instead, only push/pull to this repo with git commands.
+Run the following commands from inside this repo's directory. In our standard vagrant box, this is at `/vagrant/plugins/killbill-direct-connect-plugin`. Also, do not track this repo with SourceTree or you will get permissions errors when running deploy commands. Instead, only push/pull to this repo with git commands.
 
 ```sh
 rbenv local jruby-1.7.17
