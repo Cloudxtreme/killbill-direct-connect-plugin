@@ -11,7 +11,7 @@ Avoid this by using the [vagrant box](https://github.com/NGPVAN/killbill-you-vag
 
 # install
 
-Run the following commands from inside this repo's directory. In our standard vagrant box, this is at `/vagrant/plugins/killbill-direct-connect-plugin`. Also, do not track this repo with SourceTree or you will get permissions errors when running deploy commands. Instead, only push/pull to this repo with git commands.
+Run the following commands from inside this repo's directory. In our standard vagrant box, this is at `/vagrant/plugins/killbill-direct-connect-plugin`.
 
 ```sh
 rbenv local jruby-1.7.17
@@ -41,6 +41,12 @@ You are now ready to run [rake tasks](https://github.com/killbill/killbill-plugi
 
 ```sh
 rake killbill:deploy[true,/vagrant/bundles/plugins/ruby]
+```
+
+On Windows machines you may enounter file permission errors when attempting to run the deploy task. Running the following command should resolve this issue:
+
+```sh
+chmod 777 -R /vagrant/
 ```
 
 # Docs
