@@ -38,6 +38,16 @@ namespace :test do
   end
 end
 
+
+desc 'Force deploy - pass true for windows to fix file permissions'
+task :d, [:windows] do |task, args|
+  should_fix = args[:windows]
+  fix_permissions = 'echo "fixing permissions"; bash -c \'if [[ "`hostname`" = "vagrant" ]]; then chmod 777 -R /vagrant/; fi\''
+  sh(fix_permissions) if should_fix
+  Rake::Task["build"].invoke
+  Rake::Task["killbill:deploy"].invoke true, "/vagrant/bundles/plugins/ruby"
+end
+
 # Install tasks to package the plugin for Killbill
 require 'killbill/rake_task'
 Killbill::PluginHelper.install_tasks
