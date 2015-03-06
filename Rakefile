@@ -29,12 +29,21 @@ namespace :test do
     sh sh_command
   end
 
-  namespace :remote_unused do
+  namespace :remote_spec do
     desc 'Run RSpec remote tests'
     RSpec::Core::RakeTask.new do |task|
       task.name = 'spec'
       task.pattern = './spec/*/remote/*_spec.rb'
     end
+
+    desc 'Run spec tests'
+    task :spec, [:test_name] do |task, args|
+      test_name = args[:test_name]
+      test_name_arg = "-n \"#{test_name}\"" unless test_name.nil?
+      sh_command = "ruby -I\"lib:test\" spec/direct_connect/base_plugin_spec.rb #{test_name_arg}"
+      sh sh_command
+    end
+
   end
 end
 
