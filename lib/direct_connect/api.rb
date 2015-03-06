@@ -2,9 +2,8 @@ module Killbill #:nodoc:
   module DirectConnect #:nodoc:
     class PaymentPlugin < ::Killbill::Plugin::Payment
 
-
       def start_plugin
-        Killbill::DirectConnect.initialize! @logger, @conf_dir, @kb_apis
+        initialize
 
         super
 
@@ -12,7 +11,7 @@ module Killbill #:nodoc:
       end
 
       def stop_plugin
-        @transactions_refreshes.cancel
+        # @transactions_refreshes.cancel
 
         super
 
@@ -23,7 +22,6 @@ module Killbill #:nodoc:
       def after_request
         ActiveRecord::Base.connection.close
       end
-
 
       def initialize
       end
@@ -61,7 +59,7 @@ module Killbill #:nodoc:
       end
 
       def add_payment_method(kb_account_id, kb_payment_method_id, payment_method_props, set_default, properties, context)
-        raise OperationUnsupportedByGatewayError
+        @gateway = create_gateway(payment_method_props, properties)
       end
 
       def delete_payment_method(kb_account_id, kb_payment_method_id, properties, context)
@@ -95,7 +93,23 @@ module Killbill #:nodoc:
       def process_notification(notification, properties, context)
         raise OperationUnsupportedByGatewayError
       end
-      
+
+      private
+
+      def properties_to_hash(properties, options = {})
+        merged = {}
+        (properties || []).each do |p|
+          merged[p.key.to_sym] = p.value
+        end
+        merged.merge(options)
+      end
+
+      def create_gateway(payment_method_props, properties)
+        all_properties = (payment_method_props.nil? || payment_method_props.properties.nil? ? [] : payment_method_props.properties) + properties
+        hashed_properties = properties_to_hash(all_properties, {})
+        KillBill::DirectConnect::Gateway.new(hashed_properties)
+      end
+
     end
   end
 end

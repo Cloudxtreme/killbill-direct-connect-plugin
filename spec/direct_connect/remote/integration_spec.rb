@@ -1,10 +1,11 @@
 require 'spec_helper'
-
+require 'direct_connect/fixtures'
 ActiveMerchant::Billing::Base.mode = :test
 
 describe Killbill::DirectConnect::PaymentPlugin do
 
   include ::Killbill::Plugin::ActiveMerchant::RSpec
+  include ::DirectConnect::Fixtures
 
   before(:each) do
     @plugin = Killbill::DirectConnect::PaymentPlugin.new
@@ -23,8 +24,15 @@ describe Killbill::DirectConnect::PaymentPlugin do
     @plugin.conf_dir     = File.expand_path(File.dirname(__FILE__) + '../../../../')
     @plugin.start_plugin
 
+    fixtures = fixtures(:direct_connect)
+
+    @options = {}
+    @options[:username] = fixtures[:username]
+    @options[:password] = fixtures[:password]
+    @options[:vendorid] = fixtures[:vendorid]
+
     @properties = []
-    @pm         = create_payment_method(::Killbill::DirectConnect::DirectConnectPaymentMethod, nil, @call_context.tenant_id, @properties)
+    @pm         = create_payment_method(::Killbill::DirectConnect::DirectConnectPaymentMethod, nil, @call_context.tenant_id, @properties, @options)
     @amount     = BigDecimal.new('100')
     @currency   = 'USD'
 
