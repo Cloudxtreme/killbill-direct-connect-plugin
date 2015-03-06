@@ -41,13 +41,16 @@ You are now ready to run [rake tasks](https://github.com/killbill/killbill-plugi
 
 ```sh
 rake killbill:deploy[true,/vagrant/bundles/plugins/ruby]
+rake d # a shortcut for the above
 ```
 
-On Windows machines you may enounter file permission errors when attempting to run the deploy task. Running the following command should resolve this issue:
+On Windows machines you may enounter file permission errors when attempting to run the deploy task. Running the `rake d` task with `windows` set to `true` will fix the file permissions:
 
 ```sh
-chmod 777 -R /vagrant/
+rake d[true]
 ```
+
+IMPORTANT: do not run this on Linux/OS X hosts. If you see that every file in the repo has been modified, you will need to do some git magic to revert the file permissions on every file before checking in, while retaining your actual changes. No file should be checked in with permissions `777`.
 
 # Docs
 
