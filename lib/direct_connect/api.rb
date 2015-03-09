@@ -59,7 +59,43 @@ module Killbill #:nodoc:
       end
 
       def add_payment_method(kb_account_id, kb_payment_method_id, payment_method_props, set_default, properties, context)
-        @gateway = create_gateway(payment_method_props, properties)
+        options              = combine_options(payment_method_props, properties, kb_payment_method_id, set_default)
+        gateway              = KillBill::DirectConnect::Gateway.new(options)
+        customer             = build_customer(options)
+        payment              = build_payment_method(options, customer)
+        customer_response    = gateway.add_customer(customer)
+        customer.customerkey = customer_response.params["customerkey"]
+        card_response        = gateway.store_card(payment, customer)
+
+        if card_response.success?
+          payment_method_model = Killbill::DirectConnect::DirectConnectPaymentMethod
+          payment_method = payment_method_model.from_response(kb_account_id,
+                                                              kb_payment_method_id,
+                                                              context.tenant_id,
+                                                              payment,
+                                                              card_response,
+                                                              options,
+                                                              {},
+                                                              payment_method_model)
+
+          payment_response_model = Killbill::DirectConnect::DirectConnectResponse
+          payment_response = payment_response_model.from_response('add_payment_method',
+                                                                  kb_account_id,
+                                                                  kb_payment_method_id,
+                                                                  options[:order_id],
+                                                                  :PURCHASE,
+                                                                  'direct_connect',
+                                                                  context.tenant_id,
+                                                                  card_response,
+                                                                  {},
+                                                                  payment_response_model)
+
+          payment_method.save!
+          payment_response.save!
+          payment_method
+        else
+          raise response.message
+        end
       end
 
       def delete_payment_method(kb_account_id, kb_payment_method_id, properties, context)
@@ -104,10 +140,62 @@ module Killbill #:nodoc:
         merged.merge(options)
       end
 
-      def create_gateway(payment_method_props, properties)
-        all_properties = (payment_method_props.nil? || payment_method_props.properties.nil? ? [] : payment_method_props.properties) + properties
-        hashed_properties = properties_to_hash(all_properties, {})
-        KillBill::DirectConnect::Gateway.new(hashed_properties)
+      def combine_options(payment_method_props, properties, kb_payment_method_id, set_default)
+        all_properties            = (payment_method_props.nil? || payment_method_props.properties.nil? ? [] : payment_method_props.properties) + properties
+        options                   = properties_to_hash(all_properties)
+        options[:order_id]      ||= kb_payment_method_id
+        options[:set_default]   ||= set_default
+        options[:billing_address] = build_billing_address(options)
+        options
+      end
+
+      def build_customer(options)
+        customer_attributes = {
+            firstname:  options[:ccFirstName],
+            lastname:   options[:ccLastName],
+            title:      options[:title],
+            department: options[:department],
+            street1:    options[:address1],
+            street2:    options[:address2],
+            street3:    options[:address3],
+            city:       options[:city],
+            state:      options[:state],
+            province:   options[:province],
+            zip:        options[:zip],
+            country:    options[:country],
+            email:      options[:email],
+            mobile:     options[:mobile],
+            dayphone:   options[:dayphone],
+            nightphone: options[:nightphone],
+            fax:        options[:fax],
+            customerid: options[:customerid],
+            status:     options[:status]
+        }
+        KillBill::DirectConnect::Customer.new(customer_attributes)
+      end
+
+      def build_payment_method(options, customer)
+        payment_attributes = {
+            :number => options[:ccNumber],
+            :month => options[:ccExpirationMonth],
+            :year => options[:ccExpirationYear],
+            :first_name => customer.firstname,
+            :last_name => customer.lastname,
+            :verification_value => options[:ccVerificationValue],
+            :brand => options[:ccType]
+        }
+        ActiveMerchant::Billing::CreditCard.new(payment_attributes)
+      end
+
+      def build_billing_address(options)
+        billing_address = {}
+        billing_address[:address1] = options[:address1]
+        billing_address[:address2] = options[:address2]
+        billing_address[:city] = options[:city]
+        billing_address[:state] = options[:state]
+        billing_address[:zip] = options[:zip]
+        billing_address[:country] = options[:country]
+        billing_address
       end
 
     end

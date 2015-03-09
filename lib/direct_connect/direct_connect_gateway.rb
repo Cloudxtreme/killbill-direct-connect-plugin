@@ -336,7 +336,7 @@ module KillBill #:nodoc:
 
             if service == :store_card_safe_card && doc.at_xpath("//Response/ExtData") != nil
               token_doc = Nokogiri::XML(doc.at_xpath("//Response/ExtData").content.to_s)
-              response[:cardtoken] = token_doc.at_xpath("//CardSafeToken").to_s
+              response[:cardtoken] = token_doc.at_xpath("//CardSafeToken").content.to_s
             end
 
             if el = doc.at_xpath("//Response/PNRef")
@@ -384,7 +384,7 @@ module KillBill #:nodoc:
       end
 
       def authorization_from(response)
-        response[:pnref]
+        response[:pnref] || response[:cardtoken]
       end
 
       def post_data(action, parameters = {})

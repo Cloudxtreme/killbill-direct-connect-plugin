@@ -23,7 +23,7 @@ module KillBill #:nodoc:
       end
 
       def customername
-        @firstname + " " + @lastname
+        @firstname.to_s + " " + @lastname.to_s
       end
 
     end
