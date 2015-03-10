@@ -42,10 +42,7 @@ describe Killbill::DirectConnect::PaymentPlugin do
   end
 
   it 'should be able to charge a Credit Card directly' do
-    @options[:cc_number] = 4111111111111111  # change from 4242424242424242, which host rejects
-    @options[:cc_verification_value] = 123   # change from 1234, which host rejects
-    properties = build_pm_properties(nil, @options)
-
+    properties = build_properties
     # We created the payment method, hence the rows
     Killbill::DirectConnect::DirectConnectResponse.all.size.should == 1
     Killbill::DirectConnect::DirectConnectTransaction.all.size.should == 0
@@ -67,6 +64,7 @@ describe Killbill::DirectConnect::PaymentPlugin do
   end
 
   it 'should be able to charge and refund' do
+    @properties = build_properties
     payment_response = @plugin.purchase_payment(@pm.kb_account_id, @kb_payment.id, @kb_payment.transactions[0].id, @pm.kb_payment_method_id, @amount, @currency, @properties, @call_context)
     payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
     payment_response.amount.should == @amount
@@ -80,6 +78,7 @@ describe Killbill::DirectConnect::PaymentPlugin do
   end
 
   it 'should be able to auth, capture and refund' do
+    @properties = build_properties
     payment_response = @plugin.authorize_payment(@pm.kb_account_id, @kb_payment.id, @kb_payment.transactions[0].id, @pm.kb_payment_method_id, @amount, @currency, @properties, @call_context)
     payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
     payment_response.amount.should == @amount
@@ -108,6 +107,7 @@ describe Killbill::DirectConnect::PaymentPlugin do
   end
 
   it 'should be able to auth and void' do
+    @properties = build_properties
     payment_response = @plugin.authorize_payment(@pm.kb_account_id, @kb_payment.id, @kb_payment.transactions[0].id, @pm.kb_payment_method_id, @amount, @currency, @properties, @call_context)
     payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
     payment_response.amount.should == @amount
@@ -119,6 +119,7 @@ describe Killbill::DirectConnect::PaymentPlugin do
   end
 
   it 'should be able to auth, partial capture and void' do
+    @properties = build_properties
     payment_response = @plugin.authorize_payment(@pm.kb_account_id, @kb_payment.id, @kb_payment.transactions[0].id, @pm.kb_payment_method_id, @amount, @currency, @properties, @call_context)
     payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
     payment_response.amount.should == @amount
@@ -134,4 +135,10 @@ describe Killbill::DirectConnect::PaymentPlugin do
     payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
     payment_response.transaction_type.should == :VOID
   end
+end
+
+def build_properties
+  @options[:cc_number] = 4111111111111111  # change from 4242424242424242, which host rejects
+  @options[:cc_verification_value] = 123   # change from 1234, which host rejects
+  build_pm_properties(nil, @options)
 end

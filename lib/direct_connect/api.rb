@@ -29,11 +29,28 @@ module Killbill #:nodoc:
       end
 
       def authorize_payment(kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context)
-        raise OperationUnsupportedByGatewayError
+        gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
+          customer = build_customer(options)
+          gateway.authorize(amount_in_cents, payment_source, customer, options[:order_id])
+        end
+
+        dispatch_to_gateways(:authorize, kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context, gateway_call_proc)
       end
 
       def capture_payment(kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context)
-        raise OperationUnsupportedByGatewayError
+        gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
+          customer = build_customer(options)
+          gateway.capture(amount_in_cents, linked_transaction.txn_id, options[:order_id], customer)
+        end
+
+        linked_transaction_proc = Proc.new do |amount_in_cents, options|
+          # TODO We use the last transaction at the moment, is it good enough?
+          last_authorization = @payment_transaction_model.authorizations_from_kb_payment_id(kb_payment_id, context.tenant_id).last
+          raise "Unable to retrieve last authorization for operation=capture, kb_payment_id=#{kb_payment_id}, kb_payment_transaction_id=#{kb_payment_transaction_id}, kb_payment_method_id=#{kb_payment_method_id}" if last_authorization.nil?
+          last_authorization
+        end
+
+        dispatch_to_gateways(:capture, kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context, gateway_call_proc, linked_transaction_proc)
       end
 
       def purchase_payment(kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context)
@@ -45,7 +62,37 @@ module Killbill #:nodoc:
       end
 
       def void_payment(kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, properties, context)
-        raise OperationUnsupportedByGatewayError
+        gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
+          authorization = linked_transaction.txn_id
+
+          # Go to the gateway - while some gateways implementations are smart and have void support 'auth_reversal' and 'void' (e.g. Litle),
+          # others (e.g. CyberSource) implement different methods
+          linked_transaction.transaction_type == 'AUTHORIZE' && gateway.respond_to?(:auth_reversal) ? gateway.auth_reversal(linked_transaction.amount_in_cents, authorization, options) : gateway.void(authorization, options[:order_id])
+        end
+
+        linked_transaction_proc = Proc.new do |amount_in_cents, options|
+          linked_transaction_type = find_value_from_properties(properties, :linked_transaction_type)
+          if linked_transaction_type.nil?
+            # Default behavior to search for the last transaction
+            # If an authorization is being voided, we're performing an 'auth_reversal', otherwise,
+            # we're voiding an unsettled capture or purchase (which often needs to happen within 24 hours).
+            last_transaction = @payment_transaction_model.purchases_from_kb_payment_id(kb_payment_id, context.tenant_id).last
+            if last_transaction.nil?
+              last_transaction = @payment_transaction_model.captures_from_kb_payment_id(kb_payment_id, context.tenant_id).last
+              if last_transaction.nil?
+                last_transaction = @payment_transaction_model.authorizations_from_kb_payment_id(kb_payment_id, context.tenant_id).last
+                if last_transaction.nil?
+                  raise ArgumentError.new("Kill Bill payment #{kb_payment_id} has no auth, capture or purchase, thus cannot be voided")
+                end
+              end
+            end
+          else
+            last_transaction = @payment_transaction_model.send("#{linked_transaction_type.to_s}s_from_kb_payment_id", kb_payment_id, context.tenant_id).last
+          end
+          last_transaction
+        end
+
+        dispatch_to_gateways(:void, kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, nil, nil, properties, context, gateway_call_proc, linked_transaction_proc)
       end
 
       def credit_payment(kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context)
@@ -53,7 +100,18 @@ module Killbill #:nodoc:
       end
 
       def refund_payment(kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context)
-        raise OperationUnsupportedByGatewayError
+        gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
+          gateway.refund(amount_in_cents, linked_transaction.txn_id, options)
+        end
+
+        linked_transaction_proc = Proc.new do |amount_in_cents, options|
+          linked_transaction_type = find_value_from_properties(properties, :linked_transaction_type)
+          transaction             = @payment_transaction_model.find_candidate_transaction_for_refund(kb_payment_id, context.tenant_id, amount_in_cents, linked_transaction_type)
+          raise "Unable to retrieve transaction to refund for operation=refund, kb_payment_id=#{kb_payment_id}, kb_payment_transaction_id=#{kb_payment_transaction_id}, kb_payment_method_id=#{kb_payment_method_id}" if transaction.nil?
+          transaction
+        end
+
+        dispatch_to_gateways(:refund, kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context, gateway_call_proc, linked_transaction_proc)
       end
 
       def get_payment_info(kb_account_id, kb_payment_id, properties, context)
@@ -135,6 +193,31 @@ module Killbill #:nodoc:
         raise OperationUnsupportedByGatewayError
       end
 
+      def properties_to_hash(properties, options = {})
+        merged = {}
+        (properties || []).each do |p|
+          merged[p.key.to_sym] = p.value
+        end
+        merged.merge(options)
+      end
+
+      def hash_to_properties(options)
+        merge_properties([], options)
+      end
+
+      def merge_properties(properties, options)
+        merged = properties_to_hash(properties, options)
+
+        properties = []
+        merged.each do |k, v|
+          p       = ::Killbill::Plugin::Model::PluginProperty.new
+          p.key   = k
+          p.value = v
+          properties << p
+        end
+        properties
+      end
+
       private
 
       def dispatch_to_gateways(operation, kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context, gateway_call_proc, linked_transaction_proc=nil)
@@ -177,31 +260,6 @@ module Killbill #:nodoc:
 
         # Merge data
         merge_transaction_info_plugins(payment_processor_account_ids, responses, transactions)
-      end
-
-      def properties_to_hash(properties, options = {})
-        merged = {}
-        (properties || []).each do |p|
-          merged[p.key.to_sym] = p.value
-        end
-        merged.merge(options)
-      end
-
-      def hash_to_properties(options)
-        merge_properties([], options)
-      end
-
-      def merge_properties(properties, options)
-        merged = properties_to_hash(properties, options)
-
-        properties = []
-        merged.each do |k, v|
-          p       = ::Killbill::Plugin::Model::PluginProperty.new
-          p.key   = k
-          p.value = v
-          properties << p
-        end
-        properties
       end
 
       def combine_options(properties, kb_payment_method_id, set_default = nil)
