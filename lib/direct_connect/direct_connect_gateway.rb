@@ -380,7 +380,12 @@ module KillBill #:nodoc:
       end
 
       def message_from(response)
-        response[:respmsg]
+        case response[:respmsg]
+          when 'Token generated successfully', 'Approved'
+            'Successful transaction'
+          else
+            response[:respmsg]
+        end
       end
 
       def authorization_from(response)

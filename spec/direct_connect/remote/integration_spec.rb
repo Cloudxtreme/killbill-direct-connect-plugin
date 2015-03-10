@@ -24,12 +24,7 @@ describe Killbill::DirectConnect::PaymentPlugin do
     @plugin.conf_dir     = File.expand_path(File.dirname(__FILE__) + '../../../../')
     @plugin.start_plugin
 
-    fixtures = fixtures(:direct_connect)
-
-    @options = {}
-    @options[:username] = fixtures[:username]
-    @options[:password] = fixtures[:password]
-    @options[:vendorid] = fixtures[:vendorid]
+    @options = fixture_authentication
 
     @properties = []
     @pm         = create_payment_method(::Killbill::DirectConnect::DirectConnectPaymentMethod, nil, @call_context.tenant_id, @properties, @options)
@@ -47,7 +42,9 @@ describe Killbill::DirectConnect::PaymentPlugin do
   end
 
   it 'should be able to charge a Credit Card directly' do
-    properties = build_pm_properties
+    @options[:cc_number] = 4111111111111111  # change from 4242424242424242, which host rejects
+    @options[:cc_verification_value] = 123   # change from 1234, which host rejects
+    properties = build_pm_properties(nil, @options)
 
     # We created the payment method, hence the rows
     Killbill::DirectConnect::DirectConnectResponse.all.size.should == 1

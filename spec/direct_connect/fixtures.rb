@@ -10,6 +10,16 @@ module DirectConnect
       data.dup
     end
 
+    def fixture_authentication
+      fixtures = fixtures(:direct_connect)
+
+      options = {}
+      options[:username] = fixtures[:username]
+      options[:password] = fixtures[:password]
+      options[:vendorid] = fixtures[:vendorid]
+      options
+    end
+
     private
     def credit_card(number = '4242424242424242', customer = generate_test_customer)
       defaults = {
