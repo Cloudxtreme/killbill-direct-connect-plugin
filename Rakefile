@@ -51,11 +51,13 @@ end
 desc 'Force deploy - pass true for windows to fix file permissions'
 task :d, [:windows] do |task, args|
   should_fix = args[:windows]
+	clear_gem_cache = 'echo "clearing gem cache"; rm -rf killbill-direct_connect; gem sources -c'
   fix_permissions = 'echo "fixing permissions"; bash -c \'if [[ "`hostname`" = "vagrant" ]]; then chmod 777 -R /vagrant/; fi\''
   delete_folder = "echo 'deleting existing deployment'; rm -rf /vagrant/bundles/plugins/ruby/killbill-direct_connect"
   copy_config = "cp direct_connect.dev.yml /vagrant/bundles/plugins/ruby/killbill-direct_connect/0.0.1/direct_connect.yml"
   sh(fix_permissions) if should_fix
   sh delete_folder
+	sh clear_gem_cache
   Rake::Task["build"].invoke
   Rake::Task["killbill:deploy"].invoke(true, "/vagrant/bundles/plugins/ruby")
   sh copy_config

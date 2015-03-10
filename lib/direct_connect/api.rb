@@ -3,8 +3,6 @@ module Killbill #:nodoc:
     class PaymentPlugin < ::Killbill::Plugin::Payment
 
       def start_plugin
-        initialize
-
         super
 
         @logger.info 'Killbill::DirectConnect::PaymentPlugin started'
@@ -12,7 +10,6 @@ module Killbill #:nodoc:
 
       def stop_plugin
         # @transactions_refreshes.cancel
-
         super
 
         @logger.info 'Killbill::DirectConnect::PaymentPlugin stopped'
@@ -24,6 +21,7 @@ module Killbill #:nodoc:
       end
 
       def initialize
+        super
         @identifier = 'direct_connect'
         @payment_transaction_model = Killbill::DirectConnect::DirectConnectTransaction
         @payment_method_model = Killbill::DirectConnect::DirectConnectPaymentMethod
