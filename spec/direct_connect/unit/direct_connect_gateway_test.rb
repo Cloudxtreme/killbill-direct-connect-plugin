@@ -48,7 +48,7 @@ class DirectConnectTest < MiniTest::Test
     response = @gateway.authorize(@amount, @credit_card, @customer, @order_id)
 
     assert_success response
-    assert_equal 'Approved', response.message
+    assert_equal 'Successful transaction', response.message
     assert_equal 54321, response.authorization
   end
 
@@ -67,7 +67,7 @@ class DirectConnectTest < MiniTest::Test
     response = @gateway.capture(@amount, @authorization, @order_id, @customer)
 
     assert_success response
-    assert_equal 'Approved', response.message
+    assert_equal 'Successful transaction', response.message
   end
 
   def test_failed_capture
@@ -86,7 +86,7 @@ class DirectConnectTest < MiniTest::Test
     response = @gateway.refund(@amount, @authorization, @order_id)
 
     assert_success response
-    assert_equal 'Approved', response.message
+    assert_equal 'Successful transaction', response.message
   end
 
   def test_failed_refund
@@ -104,7 +104,7 @@ class DirectConnectTest < MiniTest::Test
     response = @gateway.void(@authorization, @order_id)
 
     assert_success response
-    assert_equal 'Approved', response.message
+    assert_equal 'Successful transaction', response.message
     assert_equal @authorization, response.authorization
   end
 

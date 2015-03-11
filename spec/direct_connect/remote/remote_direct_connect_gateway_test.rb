@@ -43,7 +43,7 @@ class RemoteDirectConnectTest < MiniTest::Test
   def test_successful_purchase
     response = @gateway.purchase(@amount, @credit_card, @customer, @order_id)
     assert_success response
-    assert_equal 'Approved', response.message
+    assert_equal 'Successful transaction', response.message
     assert response.authorization
   end
 
@@ -98,7 +98,7 @@ class RemoteDirectConnectTest < MiniTest::Test
 
     assert void = @gateway.void(auth.authorization, @order_id)
     assert_success void
-    assert_match 'Approved', void.message
+    assert_match 'Successful transaction', void.message
   end
 
   def test_failed_void
@@ -111,7 +111,7 @@ class RemoteDirectConnectTest < MiniTest::Test
   def test_successful_verify
     response = @gateway.verify(@credit_card, @customer, @order_id)
     assert_success response
-    assert_match 'Approved', response.message
+    assert_match 'Successful transaction', response.message
   end
 
   def test_failed_verify
