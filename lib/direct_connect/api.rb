@@ -3,9 +3,11 @@ module Killbill #:nodoc:
     class PaymentPlugin < ::Killbill::Plugin::Payment
 
       def start_plugin
+        @logger.progname = "#{@identifier.to_s}-plugin"
+
         super
 
-        @logger.info 'Killbill::DirectConnect::PaymentPlugin started'
+        @logger.info "#{@identifier} payment plugin started"
       end
 
       def stop_plugin
@@ -17,7 +19,14 @@ module Killbill #:nodoc:
 
       # return DB connections to the Pool if required
       def after_request
-        ActiveRecord::Base.connection.close
+        pool = ::ActiveRecord::Base.connection_pool
+        return unless pool.active_connection?
+
+        connection = ::ActiveRecord::Base.connection
+        pool.remove(connection)
+        connection.disconnect!
+
+        @logger.debug { "after_request: pool.active_connection? = #{pool.active_connection?}, connection.active? = #{connection.active?}, pool.connections.size = #{pool.connections.size}, connections = #{pool.connections.inspect}" }
       end
 
       def initialize
