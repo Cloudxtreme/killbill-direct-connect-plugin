@@ -109,7 +109,11 @@ module Killbill #:nodoc:
       end
 
       def credit_payment(kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context)
-        raise OperationUnsupportedByGatewayError
+          gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
+            customer = build_customer(options)
+            gateway.process_stored_card(amount_in_cents, payment_source, customer, options[:order_id])
+          end
+          dispatch_to_gateways(:process_stored_card, kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context, gateway_call_proc)
       end
 
       def refund_payment(kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context)
@@ -174,8 +178,43 @@ module Killbill #:nodoc:
         end
       end
 
-      def delete_payment_method(kb_account_id, kb_payment_method_id, properties, context)
-        raise OperationUnsupportedByGatewayError
+      def delete_payment_method(kb_account_id, kb_payment_method_id, payment_method_props, set_default, properties, context)
+        all_properties               = (payment_method_props.nil? || payment_method_props.properties.nil? ? [] : payment_method_props.properties) + properties
+        options                      = combine_options(all_properties, kb_payment_method_id, set_default)
+        gateway                      = KillBill::DirectConnect::Gateway.new(options)
+        customer                     = build_customer(options)
+        payment                      = build_payment_method(options, customer)
+        customer_response            = gateway.add_customer(customer)
+        customer.customerkey         = customer_response.params["customerkey"]
+        card_response                = gateway.delete_card(payment, customer, customer.customerkey)
+
+        if card_response.success?
+          payment_method = @payment_method_model.from_response(kb_account_id,
+                                                               kb_payment_method_id,
+                                                               context.tenant_id,
+                                                               payment,
+                                                               card_response,
+                                                               options,
+                                                               {},
+                                                               @payment_method_model)
+
+          payment_response = @payment_response_model.from_response('delete_payment_method',
+                                                                   kb_account_id,
+                                                                   kb_payment_method_id,
+                                                                   options[:order_id],
+                                                                   :PURCHASE,
+                                                                   @identifier,
+                                                                   context.tenant_id,
+                                                                   card_response,
+                                                                   {},
+                                                                   @payment_response_model)
+
+          payment_method.save!
+          payment_response.save!
+          payment_method
+        else
+          raise card_response.message
+        end
       end
 
       def get_payment_method_detail(kb_account_id, kb_payment_method_id, properties, context)
