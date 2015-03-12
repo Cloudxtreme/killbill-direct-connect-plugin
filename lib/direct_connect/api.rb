@@ -5,6 +5,10 @@ module Killbill #:nodoc:
       def start_plugin
         @logger.progname = "#{@identifier.to_s}-plugin"
 
+        @config_key_name = "PLUGIN_CONFIG_#{@plugin_name}".to_sym
+
+        ::Killbill::DirectConnect.initialize!(@logger, @config_key_name, @conf_dir, @kb_apis)
+
         super
 
         @logger.info "#{@identifier} payment plugin started"

@@ -1,4 +1,4 @@
-module KillBill
+module Killbill
   module DirectConnect
 
     mattr_reader :logger
@@ -18,13 +18,14 @@ module KillBill
     mattr_reader :transactions_refresh_update_killbill
     mattr_reader :base_uri
 
-    def self.initialize!(logger=Logger.new(STDOUT), conf_dir=File.expand_path('../../../', File.dirname(__FILE__)), kb_apis = nil)
+    def self.initialize!(logger=Logger.new(STDOUT), config_key_name="", conf_dir=File.expand_path('../../../', File.dirname(__FILE__)), kb_apis = nil)
       @@logger = logger
       @@kb_apis = kb_apis
       @@conf_dir = conf_dir
+      @@config_key_name = config_key_name
 
       config_file = "#{conf_dir}/direct_connect.yml"
-      @@config = Properties.new(config_file)
+      @@config = Killbill::Plugin::ActiveMerchant::Properties.new(config_file)
       @@config.parse!
       @@test = @@config[:direct_connect][:test]
 

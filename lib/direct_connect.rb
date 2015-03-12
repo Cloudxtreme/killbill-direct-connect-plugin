@@ -57,3 +57,5 @@ require 'direct_connect/models/transaction'
 
 require 'direct_connect/entities/address'
 require 'direct_connect/entities/customer'
+
+require 'direct_connect/config/configuration'
