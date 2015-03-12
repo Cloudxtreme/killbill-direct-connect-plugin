@@ -179,41 +179,20 @@ module Killbill #:nodoc:
       end
 
       def delete_payment_method(kb_account_id, kb_payment_method_id, payment_method_props, set_default, properties, context)
-        all_properties               = (payment_method_props.nil? || payment_method_props.properties.nil? ? [] : payment_method_props.properties) + properties
-        options                      = combine_options(all_properties, kb_payment_method_id, set_default)
+        options = properties_to_hash(properties)
+
+        pm      = @payment_method_model.from_kb_payment_method_id(kb_payment_method_id, context.tenant_id)
+
+        # Delete the card
+        payment_processor_account_id = options[:payment_processor_account_id] || :default
         gateway                      = KillBill::DirectConnect::Gateway.new(options)
-        customer                     = build_customer(options)
-        payment                      = build_payment_method(options, customer)
-        customer_response            = gateway.add_customer(customer)
-        customer.customerkey         = customer_response.params["customerkey"]
-        card_response                = gateway.delete_card(payment, customer, customer.customerkey)
+        gw_response = gateway.delete_card(options[:customer_id], pm.token, options)
+        response, transaction = save_response_and_transaction(gw_response, :delete_payment_method, kb_account_id, context.tenant_id, payment_processor_account_id)
 
-        if card_response.success?
-          payment_method = @payment_method_model.from_response(kb_account_id,
-                                                               kb_payment_method_id,
-                                                               context.tenant_id,
-                                                               payment,
-                                                               card_response,
-                                                               options,
-                                                               {},
-                                                               @payment_method_model)
-
-          payment_response = @payment_response_model.from_response('delete_payment_method',
-                                                                   kb_account_id,
-                                                                   kb_payment_method_id,
-                                                                   options[:order_id],
-                                                                   :PURCHASE,
-                                                                   @identifier,
-                                                                   context.tenant_id,
-                                                                   card_response,
-                                                                   {},
-                                                                   @payment_response_model)
-
-          payment_method.save!
-          payment_response.save!
-          payment_method
+        if response.success
+          @payment_method_model.mark_as_deleted! kb_payment_method_id, context.tenant_id
         else
-          raise card_response.message
+          raise response.message
         end
       end
 
