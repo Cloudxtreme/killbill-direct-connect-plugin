@@ -22,7 +22,7 @@ Gem::Specification.new do |s|
 
   s.rdoc_options << '--exclude' << '.'
 
-  s.add_dependency 'killbill', '~> 3.2.0'
+  s.add_dependency 'killbill', '~> 3.2.4'
   s.add_dependency 'activemerchant'
   s.add_dependency('active_utils', '~> 2.2.0')
   s.add_dependency 'offsite_payments', '~> 2.0.1'
